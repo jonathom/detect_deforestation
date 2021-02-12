@@ -1,0 +1,20 @@
+---
+title: "Deforestation Detection"
+author: "Brian Pondi, Jonathan Bahlmann"
+date: "2/12/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load Data
+As seen in "final.Rmd". The subdirectory `L8cube_subregion` contains a NDVI time series as single `.tif` files, a file per acquisition, as input data.
+```{r, warning=FALSE, message=FALSE}
+library(stars)
+subdir = "L8cube_subregion"
+f = paste0(subdir, "/", list.files(subdir))
+st = read_stars(f)
+plot(merge(st))
+```
