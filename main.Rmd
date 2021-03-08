@@ -9,12 +9,40 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+* Observe structure: Intro, Methods, Results, Discussion, Conclusion
+
 # Load Data
 As seen in "final.Rmd". The subdirectory `L8cube_subregion` contains a NDVI time series as single `.tif` files, a file per acquisition, as input data.
 ```{r, warning=FALSE, message=FALSE}
 library(stars)
-subdir = "L8cube_subregion"
+library(gapfill)
+subdir = "landsat_monthly"
 f = paste0(subdir, "/", list.files(subdir))
-st = read_stars(f)
-plot(merge(st))
+st = merge(read_stars(f))
+plot(st)
+```
+
+TODO: Introduce Gapfill, why did we chose this?
+
+`Gapfill` documentation tells us that as input, a 4-dimensional numeric array is needed, with dimensions x, y, seasonal index (doy), year.
+```{r}
+# make array
+helper <- c(st[,,,1][[1]])
+for (i in 2:72) {
+  helper <- c(helper, st[,,,i][[1]])
+}
+xlab <- seq(from = attr(st, "dimensions")[[1]]$offset, by = attr(st, "dimensions")[[1]]$delta, length.out = attr(st, "dimensions")[[1]]$to)
+ylab <- seq(from = attr(st, "dimensions")[[2]]$offset, by = attr(st, "dimensions")[[2]]$delta, length.out = attr(st, "dimensions")[[2]]$to)
+doi <- c(1, 32, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335)
+years <- seq(2013,2018,1)
+
+m <- array(helper, dim = c(540, 501, 12, 6), dimnames = list(xlab, ylab, doi, years))
+# Image(m) # to plot, takes time
+```
+
+PRODES data sorted by years can be found here: [PRODES yearly deforestation](http://terrabrasilis.dpi.inpe.br/download/dataset/legal-amz-prodes/vector/yearly_deforestation.zip)
+
+Next steps: cut to AOI etc.
+```{r}
+prod <- read_sf("./yearly_deforestation/yearly_deforestation.shp")
 ```
