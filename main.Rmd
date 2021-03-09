@@ -27,19 +27,21 @@ TODO: Introduce Gapfill, why did we chose this?
 `Gapfill` documentation tells us that as input, a 4-dimensional numeric array is needed, with dimensions x, y, seasonal index (doy), year.
 ```{r}
 # make array
-helper <- c(st[,,,1][[1]])
-for (i in 2:72) {
-  helper <- c(helper, st[,,,i][[1]])
-}
+imgdata <- c(st[,,,1:72][[1]])
+
 xlab <- seq(from = attr(st, "dimensions")[[1]]$offset, by = attr(st, "dimensions")[[1]]$delta, length.out = attr(st, "dimensions")[[1]]$to)
 ylab <- seq(from = attr(st, "dimensions")[[2]]$offset, by = attr(st, "dimensions")[[2]]$delta, length.out = attr(st, "dimensions")[[2]]$to)
 doi <- c(1, 32, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335)
 years <- seq(2013,2018,1)
 
-m <- array(helper, dim = c(540, 501, 12, 6), dimnames = list(xlab, ylab, doi, years))
+m <- array(imgdata, dim = c(540, 501, 12, 6), dimnames = list(xlab, ylab, doi, years))
+# TODO switch dimensions!
 # Image(m) # to plot, takes time
+Image(m[,,4:5,1:2]) # plot a subset
 ```
-
+```{r}
+# f <- Gapfill(m)
+```
 PRODES data sorted by years can be found here: [PRODES yearly deforestation](http://terrabrasilis.dpi.inpe.br/download/dataset/legal-amz-prodes/vector/yearly_deforestation.zip)
 
 Next steps: cut to AOI etc.
