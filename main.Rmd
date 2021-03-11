@@ -16,10 +16,12 @@ As seen in "final.Rmd". The subdirectory `L8cube_subregion` contains a NDVI time
 ```{r, warning=FALSE, message=FALSE}
 library(stars)
 library(gapfill)
+library(bfast)
 subdir = "landsat_monthly"
 f = paste0(subdir, "/", list.files(subdir))
 st = merge(read_stars(f))
 plot(st)
+st <- st[,150:200,150:200,]
 ```
 
 TODO: Introduce Gapfill, why did we chose this?
@@ -29,18 +31,35 @@ TODO: Introduce Gapfill, why did we chose this?
 # make array
 imgdata <- c(st[,,,1:72][[1]])
 
-xlab <- seq(from = attr(st, "dimensions")[[1]]$offset, by = attr(st, "dimensions")[[1]]$delta, length.out = attr(st, "dimensions")[[1]]$to)
-ylab <- seq(from = attr(st, "dimensions")[[2]]$offset, by = attr(st, "dimensions")[[2]]$delta, length.out = attr(st, "dimensions")[[2]]$to)
+xlab <- seq(from = attr(st, "dimensions")[[1]]$offset, by = attr(st, "dimensions")[[1]]$delta, length.out = attr(st, "dimensions")[[1]]$to - attr(st, "dimensions")[[1]]$from)
+ylab <- seq(from = attr(st, "dimensions")[[2]]$offset, by = attr(st, "dimensions")[[2]]$delta, length.out = attr(st, "dimensions")[[2]]$to - attr(st, "dimensions")[[1]]$from)
 doi <- c(1, 32, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335)
 years <- seq(2013,2018,1)
 
-m <- array(imgdata, dim = c(540, 501, 12, 6), dimnames = list(xlab, ylab, doi, years))
+# 540 501 instead 50 50
+m <- array(imgdata, dim = c(50, 50, 12, 6), dimnames = list(xlab, ylab, doi, years))
 # TODO switch dimensions!
 # Image(m) # to plot, takes time
 Image(m[,,4:5,1:2]) # plot a subset
+Image(m)
 ```
 ```{r}
-# f <- Gapfill(m)
+# d <- Gapfill(m)
+# saveRDS(d, "50x50_Gapfill.rds")
+g <- readRDS("50x50_Gapfill.rds")
+Image(g$fill)
+```
+
+```{r}
+# ts of first pixel
+x <- as.vector(g$fill[1,1,,])
+y <- as.ts(x, start = 2013, frequency = 12)
+bf <- bfastmonitor(y, start = c(2013, 1))
+
+# example
+# library(zoo)
+# NDVIa <- as.ts(zoo(som$NDVI.a, som$Time))
+# plot(NDVIa)
 ```
 PRODES data sorted by years can be found here: [PRODES yearly deforestation](http://terrabrasilis.dpi.inpe.br/download/dataset/legal-amz-prodes/vector/yearly_deforestation.zip)
 
