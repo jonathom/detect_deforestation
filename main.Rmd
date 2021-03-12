@@ -19,30 +19,58 @@ library(gapfill)
 library(bfast)
 subdir = "landsat_monthly"
 f = paste0(subdir, "/", list.files(subdir))
-st = merge(read_stars(f))
+st = merge(read_stars(f)) # make stars object
 plot(st)
-st <- st[,150:200,150:200,]
+st_subs <- st[,150:200,150:200,] # make subset
+plot(st_subs)
 ```
+
+## Prepare for Gapfill
 
 TODO: Introduce Gapfill, why did we chose this?
 
 `Gapfill` documentation tells us that as input, a 4-dimensional numeric array is needed, with dimensions x, y, seasonal index (doy), year.
 ```{r}
-# make array
-imgdata <- c(st[,,,1:72][[1]])
+# getpixel values of stars subset
+imgdata_subs <- c(st_subs[,,,1:72][[1]])
 
-xlab <- seq(from = attr(st, "dimensions")[[1]]$offset, by = attr(st, "dimensions")[[1]]$delta, length.out = attr(st, "dimensions")[[1]]$to - attr(st, "dimensions")[[1]]$from)
-ylab <- seq(from = attr(st, "dimensions")[[2]]$offset, by = attr(st, "dimensions")[[2]]$delta, length.out = attr(st, "dimensions")[[2]]$to - attr(st, "dimensions")[[1]]$from)
+# make labels
+xlab <- seq(from = attr(st_subs, "dimensions")[[1]]$offset, by = attr(st_subs, "dimensions")[[1]]$delta, length.out = attr(st_subs, "dimensions")[[1]]$to - attr(st_subs, "dimensions")[[1]]$from)
+ylab <- seq(from = attr(st_subs, "dimensions")[[2]]$offset, by = attr(st_subs, "dimensions")[[2]]$delta, length.out = attr(st_subs, "dimensions")[[2]]$to - attr(st_subs, "dimensions")[[1]]$from)
 doi <- c(1, 32, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335)
 years <- seq(2013,2018,1)
 
-# 540 501 instead 50 50
-m <- array(imgdata, dim = c(50, 50, 12, 6), dimnames = list(xlab, ylab, doi, years))
-# TODO switch dimensions!
-# Image(m) # to plot, takes time
-Image(m[,,4:5,1:2]) # plot a subset
-Image(m)
+# make array
+m <- array(imgdata_subs, dim = c(50, 50, 12, 6), dimnames = list(xlab, ylab, doi, years))
+# transpose to switch y, x to x, y
+m <- aperm(m, c(2,1,3,4))
+
+# get pixels of whole dataset
+imgdata <- c(st[,,,1:72][[1]])
+
+# make labels
+xlab <- seq(from = attr(st, "dimensions")[[1]]$offset, by = attr(st, "dimensions")[[1]]$delta, length.out = attr(st, "dimensions")[[1]]$to)
+ylab <- seq(from = attr(st, "dimensions")[[2]]$offset, by = attr(st, "dimensions")[[2]]$delta, length.out = attr(st, "dimensions")[[2]]$to)
+doi <- c(1, 32, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335)
+years <- seq(2013,2018,1)
+
+# make array, transpose
+h <- array(imgdata, dim = c(540, 501, 12, 6), dimnames = list(xlab, ylab, doi, years))
+h <- aperm(h, c(2,1,3,4))
+
+# plot
+# subset
+# Image(m[,,5,1:2])
+# original subset
+# plot(st_subs[,,,c(5,17)])
+# all
+Image(h[,,5,1:2])
+# original stars
+plot(st[,,,c(5, 17)])
 ```
+
+## Gapfill
+
 ```{r}
 # d <- Gapfill(m)
 # saveRDS(d, "50x50_Gapfill.rds")
@@ -53,13 +81,18 @@ Image(g$fill)
 ```{r}
 # ts of first pixel
 x <- as.vector(g$fill[1,1,,])
-y <- as.ts(x, start = 2013, frequency = 12)
+y <- as.ts(x, start = c(2013, 1), frequency = 12) # or use ts?
+y
 bf <- bfastmonitor(y, start = c(2013, 1))
+plot(y)
 
 # example
-# library(zoo)
-# NDVIa <- as.ts(zoo(som$NDVI.a, som$Time))
-# plot(NDVIa)
+library(zoo)
+NDVIa <- as.ts(zoo(som$NDVI.a, som$Time))
+plot(NDVIa)
+mona <- bfastmonitor(NDVIa, start = c(2010, 13))
+mona
+plot(mona)
 ```
 PRODES data sorted by years can be found here: [PRODES yearly deforestation](http://terrabrasilis.dpi.inpe.br/download/dataset/legal-amz-prodes/vector/yearly_deforestation.zip)
 
