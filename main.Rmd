@@ -17,6 +17,7 @@ As seen in "final.Rmd". The subdirectory `L8cube_subregion` contains a NDVI time
 library(stars)
 library(gapfill)
 library(bfast)
+library(zoo)
 subdir = "landsat_monthly"
 f = paste0(subdir, "/", list.files(subdir))
 st = merge(read_stars(f)) # make stars object
@@ -79,22 +80,21 @@ Image(g$fill)
 ```
 
 ```{r}
-# ts of first pixel
+# ts of a pixel
 x <- as.vector(g$fill[1,1,,])
-y <- as.ts(x, start = c(2013, 1), frequency = 12) # or use ts?
+# time must be given scaled to 1. -> monthly -> 1/12 = .08333333
+# zoo must also be used in between, exactly as in ?bfastmonitor example
+y <- as.ts(zoo(x, seq(2013, by = .08333333, length.out = 72))) 
 y
-bf <- bfastmonitor(y, start = c(2013, 1))
-plot(y)
 
-# example
-library(zoo)
-NDVIa <- as.ts(zoo(som$NDVI.a, som$Time))
-plot(NDVIa)
-mona <- bfastmonitor(NDVIa, start = c(2010, 13))
-mona
-plot(mona)
+bf <- bfastmonitor(y, start = c(2018, 1))
+bf
+plot(bf)
 ```
-PRODES data sorted by years can be found here: [PRODES yearly deforestation](http://terrabrasilis.dpi.inpe.br/download/dataset/legal-amz-prodes/vector/yearly_deforestation.zip)
+
+## PRODES 
+
+data sorted by years can be found here: [PRODES yearly deforestation](http://terrabrasilis.dpi.inpe.br/download/dataset/legal-amz-prodes/vector/yearly_deforestation.zip)
 
 Next steps: cut to AOI etc.
 ```{r}
