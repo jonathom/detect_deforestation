@@ -11,19 +11,43 @@ knitr::opts_chunk$set(echo = TRUE)
 
 * Observe structure: Intro, Methods, Results, Discussion, Conclusion
 
-# Load Data
+# Introduction
+
+# Methods
+
+## Input Data and Preparations
+
+* Package description
+* PRODES data sorted by years can be found here: [PRODES yearly deforestation](http://terrabrasilis.dpi.inpe.br/download/dataset/legal-amz-prodes/vector/yearly_deforestation.zip)
+
 As seen in "final.Rmd". The subdirectory `L8cube_subregion` contains a NDVI time series as single `.tif` files, a file per acquisition, as input data.
 ```{r, warning=FALSE, message=FALSE}
 library(stars)
 library(gapfill)
 library(bfast)
 library(zoo)
+library(raster)
 subdir = "landsat_monthly"
 f = paste0(subdir, "/", list.files(subdir))
 st = merge(read_stars(f)) # make stars object
-plot(st)
-st_subs <- st[,150:200,150:200,] # make subset
-plot(st_subs)
+# make subset to test Gapfill
+st_subs <- st[,150:200,150:200,]
+
+# load PRODES data
+# prod <- read_sf("./yearly_deforestation/yearly_deforestation.shp")
+# prod_3857 <- st_transform(prod, crs = st_crs(st))
+# prod_crop <- st_crop(prod_3857, st) # clip
+# write_sf(prod_crop, "./yearly_deforestation/PRODES_cropped.shp")
+prod <- read_sf("./yearly_deforestation/PRODES_cropped.shp")
+prod <- prod[prod$YEAR < 2019,]
+```
+
+```{r, warning=FALSE}
+# whats in it?
+# plot(st)
+plot(as(st[,,,5], "Raster"))
+plot(prod["YEAR"], add = TRUE)
+plot(prod["YEAR"])
 ```
 
 ## Prepare for Gapfill
@@ -92,11 +116,46 @@ bf
 plot(bf)
 ```
 
-## PRODES 
 
-data sorted by years can be found here: [PRODES yearly deforestation](http://terrabrasilis.dpi.inpe.br/download/dataset/legal-amz-prodes/vector/yearly_deforestation.zip)
-
-Next steps: cut to AOI etc.
 ```{r}
-prod <- read_sf("./yearly_deforestation/yearly_deforestation.shp")
+# single pixel
+defo_test <- st[st_geometry(prod[2,])]
+defo_test_ts <- as.vector(defo_test[,5,5,][[1]])
+test_ts <- as.ts(zoo(defo_test_ts, seq(2013, by = .08333333, length.out = 72))) 
+test <- bfastmonitor(test_ts, start = c(2018, 1))
+plot(test)
+
+# mean of this polygon
+mean_test <- st_apply(st[st_geometry(prod[2,])], "attributes", mean,  na.rm = TRUE) # aggregate
+defo_test_ts <- mean_test[][[1]]
+test_ts <- as.ts(zoo(defo_test_ts, seq(2013, by = .08333333, length.out = 72))) 
+test <- bfastmonitor(test_ts, start = c(2018, 1))
+plot(test)
+
+# calculate breaks for every single pixel
+vec <- c(0)
+count <- 1
+for (i in 1:10) {
+  for (j in 1:13) {
+    ts <- defo_test[,i,j,][[1]]
+    test_ts <- as.ts(zoo(ts, seq(2013, by = .08333333, length.out = 72)))
+    
+    if (length(unique(test_ts)) > 1) {
+      test_bf <- bfastmonitor(test_ts, start = c(2018, 1))
+      vec[count] <- test_bf$breakpoint
+    } else {
+        # vec[count] <- 99
+    }
+    count <- count + 1
+  }
+}
+vec
 ```
+
+
+
+# Results
+
+# Discussion
+
+# Conclusion
