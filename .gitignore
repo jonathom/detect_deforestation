@@ -2,3 +2,5 @@ L8cube_subregion/
 landsat_monthly/
 yearly_deforestation/
 .Rhistory
+all_smaller_50x50_Gapfill.rds
+all_smaller_100x100_Gapfill.rds
