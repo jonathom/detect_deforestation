@@ -119,9 +119,18 @@ for (i in 1:dims[1]) { # looping through x
 }
 ```
 
-```{r plot-bfast-aoi}
+```{r plot-bfast-aoi, warning=FALSE}
+# plot(prod["YEAR"])
+ras <- rasterize(prod, as(st[,,,5], "Raster"), "YEAR")
+ras.m <- aperm(matrix(ras[], ncol = 140), c(2,1))
+ras.m[ras.m < 2019] <- FALSE
+ras.m[ras.m == 2019] <- TRUE
+ras.m[is.na(ras.m)] <- FALSE
+
 Image(result)
-plot(prod["YEAR"])
+Image(ras.m)
+
+table(result, ras.m)
 ```
 
 ## Error Table
