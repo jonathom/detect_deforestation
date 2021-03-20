@@ -37,6 +37,7 @@ library(bfast)
 library(zoo)
 library(raster)
 subdir = "landsat_monthly"
+subdir = "landsat_quarterly"
 f = paste0(subdir, "/", list.files(subdir))
 st = merge(read_stars(f)) # make stars object
 plot(st)
@@ -53,7 +54,7 @@ prod <- read_sf("./yearly_deforestation/PRODES_cropped.shp")
 ```{r plot-AOI, warning=FALSE}
 # whats in it?
 # plot(st)
-plot(as(st[,,,5], "Raster"))
+plot(as(st[,,,6], "Raster"))
 plot(prod["YEAR"], add = TRUE)
 plot(prod["YEAR"])
 ```
@@ -69,14 +70,15 @@ imgdata <- c(st[,,,][[1]])
 xlab <- seq(from = attr(st, "dimensions")[[1]]$offset, by = attr(st, "dimensions")[[1]]$delta, length.out = attr(st, "dimensions")[[1]]$to)
 ylab <- seq(from = attr(st, "dimensions")[[2]]$offset, by = attr(st, "dimensions")[[2]]$delta, length.out = attr(st, "dimensions")[[2]]$to)
 doi <- c(1, 32, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335)
+doi <- c(1, 91, 182, 274)
 years <- seq(2013,2019,1)
 
 # make array, transpose
-h <- array(imgdata, dim = c(140, 140, 12, 7), dimnames = list(xlab, ylab, doi, years))
+h <- array(imgdata, dim = c(140, 140, 4, 7), dimnames = list(xlab, ylab, doi, years))
 h <- aperm(h, c(2,1,3,4))
 
 # all
-Image(h[,,5,1:2])
+Image(h[,,2,3:4])
 # original stars
 plot(st[,,,c(5, 17)])
 ```
@@ -85,45 +87,66 @@ plot(st[,,,c(5, 17)])
 
 ```{r do-gapfill, warning=FALSE}
 # d <- Gapfill(h, iMax = 5)
-# saveRDS(d, "./iMax5_140_gapfilled.rds")
-gf <- readRDS("monthly_iMax5_140_gapfilled.rds")
-Image(gf$fill)
+# saveRDS(d, "./iMax5_140_gapfilled_quarterly.rds")
+gf_monthly <- readRDS("monthly_iMax5_140_gapfilled.rds")
+Image(gf_monthly$fill)
+gf_quarterly <- readRDS("quarterly_iMax5_140_gapfilled.rds")
+Image(gf_quarterly$fill)
 ```
 
 ## BFAST Test
 ```{r bfast-test}
 # ts of a pixel
-x <- as.vector(gf$fill[1,1,,])
+x <- as.vector(gf_monthly$fill[15,20,,])
 # time must be given scaled to 1. -> monthly -> 1/12 = .08333333
 # zoo must also be used in between, exactly as in ?bfastmonitor example
-y <- as.ts(zoo(x, seq(2013, by = .08333333, length.out = 72))) 
-y
-
-bf <- bfastmonitor(y, start = c(2018, 1))
-bf
+y <- as.ts(zoo(x, seq(2013, by = .08333333, length.out = 84))) 
+y <- as.ts(zoo(x[56:84], seq(2017.666666, by = .08333333, length.out = 28))) # cut time steps
+fo <- seq(0, 83, 4)# 4
+y <- as.ts(zoo(x[fo], seq(2013, by = .5, length.out = 28))) # try quarterly with monthly values
+fo <- seq(0, 83, 2)# 4
+y <- as.ts(zoo(x[fo], seq(2013, by = .16666667, length.out = 42))) # try quarterly with monthly values
+bf <- bfastmonitor(y, start = 2018.5) # with 2019.6 it desnt work, but with c2019,6 but that isn't hald the year but something very different
 plot(bf)
+
+x1 <- as.vector(gf_quarterly$fill[15,20,,])
+y1 <- as.ts(zoo(x1, seq(2013, by = .25, length.out = 28))) 
+bf1 <- bfastmonitor(y1, start = 2019) # 2019,6 works but monitoring period is then off chart
+plot(bf1)
 ```
 
 ## Calculate BFAST Over AOI
 
 ```{r bfast-aoi}
-gapfill_matrix <- gf$fill
-dims <- dim(gapfill_matrix)
-
-result <- matrix(rep(FALSE, dims[1]*dims[2]), ncol = dims[1])
-for (i in 1:dims[1]) { # looping through x
-  for (j in 1:dims[2]) { # loops through y
-    raw_px_ts <- as.vector(gapfill_matrix[i,j,,])
-    px_ts_obj <- as.ts(zoo(raw_px_ts, seq(2013, by = .08333333, length.out = 84)))
-    bfm_obj <- bfastmonitor(px_ts_obj, start = c(2019, 1))
-    brkpoint <- bfm_obj$breakpoint
-    if(!is.na(brkpoint)) {
-      result[i,j] <- TRUE
-    } else {
-      # FALSE
+bfast_on_tile <- function(gapfill_matrix, by, ts) {
+  dims <- dim(gapfill_matrix)
+  result <- matrix(rep(FALSE, dims[1]*dims[2]), ncol = dims[1])
+  for (i in 1:dims[1]) { # looping through x
+    for (j in 1:dims[2]) { # loops through y
+      raw_px_ts <- as.vector(gapfill_matrix[i,j,,])
+      px_ts_obj <- as.ts(zoo(raw_px_ts, seq(2013, by = by, length.out = ts)))
+      bfm_obj <- bfastmonitor(px_ts_obj, start = 2019)
+      brkpoint <- bfm_obj$breakpoint
+      if(!is.na(brkpoint)) {
+        result[i,j] <- TRUE
+      } else {
+        # FALSE
+      }
     }
   }
+  return(result)
 }
+
+bfast_monthly <- bfast_on_tile(gf_monthly$fill, by = .08333333, ts = 84)
+bfast_quarter <- bfast_on_tile(gf_quarterly$fill, by = 0.24999999, ts = 28)
+
+#raw_px_ts <- as.vector(gf_quarterly$fill[5,5,,])
+#px_ts_obj <- as.ts(zoo(raw_px_ts, seq(2013, by = .24999999, length.out = 28)))
+#bfm_obj5 <- bfastmonitor(px_ts_obj, start = c(2019, 6))
+
+# raw_px_ts1 <- as.vector(gf_monthly$fill[5,5,,])
+# px_ts_obj1 <- as.ts(zoo(raw_px_ts1, seq(2013, by = .08333333, length.out = 84)))
+# bfm_obj1 <- bfastmonitor(px_ts_obj1, start = 2019)
 ```
 
 ```{r plot-bfast-aoi, warning=FALSE}
@@ -134,10 +157,12 @@ ras.m[ras.m < 2019] <- FALSE
 ras.m[ras.m == 2019] <- TRUE
 ras.m[is.na(ras.m)] <- FALSE
 
-Image(result)
+Image(bfast_monthly)
+Image(bfast_quarter)
 Image(ras.m)
 
-table(result, ras.m)
+table(bfast_monthly, ras.m)
+table(bfast_quarter, ras.m)
 ```
 
 ## Error Table
