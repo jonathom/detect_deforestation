@@ -15,11 +15,18 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Methods
 
-Prediction of missing values in satellite data ere carried out using gapfill package in R . The gapfill approach was designed to carry out predictions on satellite data that  were recorded at equally spaced points of time.  Based on Gerber et.al 2016 , they applied the algorithm to MODIS NDVI data with cloud cover scenarios of 50% missing data. The method was further compared to Gapfill-Python and TIMESAT  and it provided the most accurate prediction in terms of RMSE.
+The time series Landsat 8 satellite images used for this research were already provided in a state where cloud cover were already removed. The data covers the period 01-01-2013 to 31-12-2019. 
+The Landsat 8 data covered row 001, paths 066 and 067.
+
+The time series data was aggregated to a monthly and quarterly NDVI (Normalized Difference Vegetation Index) data where the median pixel values per row and column were selected. This resulted to 12 NDVI images per year in the former approach and 4 NDVI images per year in the latter approach
+
+
+Prediction of missing values in satellite data are carried out using gapfill package in R . The gapfill approach was designed to carry out predictions on satellite data that  were recorded at equally spaced points of time.  Based on Gerber et.al 2016 , they applied the algorithm to MODIS NDVI data with cloud cover scenarios of 50% missing data. The method was further compared to Gapfill-Python and TIMESAT  and it provided the most accurate prediction in terms of RMSE.
 
 Gapfill was appealing to this research because it's capable of handling large spatio-temporal data, it’s user friendly and capability tailored to  specific features of different satellite images. The predictions of the missing values are based on a subset-predict procedure, i.e., each missing value is predicted separately by (1) selecting subsets of the data that are in a neighborhood around the missing point and (2) predicting the missing value based on the subset(Gerber, 2016).
 
 In this research we also explored to tailor gapfill by customizing the iMax parameter which is the maximum number of iterations until NA is  returned as predicted value (Gerber, 2016). The research  compares the iMax parameter at value 5 (five)  for  five iterations versus undefined which results to infinite iterations by default.
+
 
 BFAST(Breaks For Additive Season and Trend)
 
@@ -202,8 +209,10 @@ vec
 
 # Conclusion
 
-# Reference
-Gerber et.al (2016). Predicting missing values in spatio-temporal satellite data.
+# References
+Gerber F, Furrer R, Schaepman-Strub G, de Jong R, Schaepman ME (2016) Predicting missing values in spatio-temporal satellite data.
 
-Verbesselt, J., Hyndman, R., Newnham, G., & Culvenor, D. (2010). Detecting trend and seasonal changes in satellite image time series. Remote Sensing of Environment, 114, 106-115. 
+Verbesselt, J., Hyndman, R., Newnham, G., & Culvenor, D. (2010). Detecting trend and seasonal changes in satellite image time series. 
+
+Verbesselt, J., Zeileis, A., & Herold, M. (2013). Near real-time disturbance detection using satellite image time series.
 
