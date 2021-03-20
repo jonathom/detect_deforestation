@@ -15,6 +15,15 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Methods
 
+Prediction of missing values in satellite data ere carried out using gapfill package in R . The gapfill approach was designed to carry out predictions on satellite data that  were recorded at equally spaced points of time.  Based on Gerber et.al 2016 , they applied the algorithm to MODIS NDVI data with cloud cover scenarios of 50% missing data. The method was further compared to Gapfill-Python and TIMESAT  and it provided the most accurate prediction in terms of RMSE.
+
+Gapfill was appealing to this research because it's capable of handling large spatio-temporal data, it’s user friendly and capability tailored to  specific features of different satellite images. The predictions of the missing values are based on a subset-predict procedure, i.e., each missing value is predicted separately by (1) selecting subsets of the data that are in a neighborhood around the missing point and (2) predicting the missing value based on the subset(Gerber, 2016).
+
+In this research we also explored to tailor gapfill by customizing the iMax parameter which is the maximum number of iterations until NA is  returned as predicted value (Gerber, 2016). The research  compares the iMax parameter at value 5 (five)  for  five iterations versus undefined which results to infinite iterations by default.
+
+BFAST(Breaks For Additive Season and Trend)
+
+
 ## Input Data and Preparations
 
 * Package description
@@ -50,8 +59,6 @@ plot(prod["YEAR"])
 ```
 
 ## Prepare for Gapfill
-
-TODO: Introduce Gapfill, why did we chose this?
 
 `Gapfill` documentation tells us that as input, a 4-dimensional numeric array is needed, with dimensions x, y, seasonal index (doy), year.
 ```{r create-gapfill-input}
@@ -194,3 +201,9 @@ vec
 # Discussion
 
 # Conclusion
+
+# Reference
+Gerber et.al (2016). Predicting missing values in spatio-temporal satellite data.
+
+Verbesselt, J., Hyndman, R., Newnham, G., & Culvenor, D. (2010). Detecting trend and seasonal changes in satellite image time series. Remote Sensing of Environment, 114, 106-115. 
+
