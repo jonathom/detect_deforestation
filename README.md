@@ -80,17 +80,10 @@ prod <- read_sf("./yearly_deforestation/PRODES_cropped.shp")
 ``` r
 # whats in it?
 # plot(st)
-plot(as(st[,,,6], "Raster"))
-plot(prod["YEAR"], add = TRUE)
-```
-
-![](main_files/figure-markdown_github/plot-AOI-1.png)
-
-``` r
 plot(prod["YEAR"])
 ```
 
-![](main_files/figure-markdown_github/plot-AOI-2.png)
+![](main_files/figure-markdown_github/plot-AOI-1.png)
 
 Prepare for Gapfill
 -------------------
@@ -186,94 +179,134 @@ bfast_on_tile <- function(gapfill_matrix, by, ts, order) {
   return(result)
 }
 
-bfast_monthly <- bfast_on_tile(gf_monthly$fill, by = .08333333, ts = 84, order = 3)
-bfast_quarter <- bfast_on_tile(gf_quarterly$fill, by = 0.25, ts = 28, order = 2)
+bfast_monthly3 <- bfast_on_tile(gf_monthly$fill, by = .08333333, ts = 84, order = 3)
+bfast_monthly2 <- bfast_on_tile(gf_monthly$fill, by = .08333333, ts = 84, order = 2)
+bfast_quarter2 <- bfast_on_tile(gf_quarterly$fill, by = 0.25, ts = 28, order = 2)
+saveRDS(bfast_monthly3, "bfast_monthly3.rds")
+saveRDS(bfast_monthly2, "bfast_monthly2.rds")
+saveRDS(bfast_quarter2, "bfast_quarter2.rds")
 # warning: too few observations in history period
 ```
 
 ``` r
-# plot(prod["YEAR"])
+# bfast_monthly3 <- readRDS("bfast_monthly3.rds")
+bfast_monthly2 <- readRDS("bfast_monthly2.rds")
+bfast_quarter2 <- readRDS("bfast_quarter2.rds")
+```
+
+``` r
+# rasterize PRODES data
 ras <- rasterize(prod, as(st[,,,5], "Raster"), "YEAR")
-ras.m <- aperm(matrix(ras[], ncol = 140), c(2,1))
-ras.m[ras.m < 2019] <- FALSE
-ras.m[ras.m == 2019] <- TRUE
-ras.m[is.na(ras.m)] <- FALSE
+prodes <- aperm(matrix(ras[], ncol = 140), c(2,1))
+prodes[prodes < 2019] <- FALSE
+prodes[prodes == 2019] <- TRUE
+prodes[is.na(prodes)] <- FALSE
 
-Image(bfast_monthly)
+# to mask out previous deforestation
+prodes_prev <- aperm(matrix(ras[], ncol = 140), c(2,1))
+prodes_prev[prodes_prev < 2019] <- TRUE
+prodes_prev[prodes_prev == 2019] <- FALSE
+prodes_prev[is.na(prodes_prev)] <- FALSE
+
+bfast_monthly2_prev <- bfast_monthly2
+bfast_monthly2_prev[prodes_prev == 1] <- NA
+
+bfast_quarter2_prev <- bfast_quarter2
+bfast_quarter2_prev[prodes_prev == 1] <- NA
 ```
 
-![](main_files/figure-markdown_github/plot-bfast-aoi-1.png)
-
 ``` r
-Image(bfast_quarter)
-```
+table1 <- addmargins(table(bfast_monthly2, prodes))
+table2 <- addmargins(table(bfast_quarter2, prodes))
 
-![](main_files/figure-markdown_github/plot-bfast-aoi-2.png)
-
-``` r
-Image(ras.m)
-```
-
-![](main_files/figure-markdown_github/plot-bfast-aoi-3.png)
-
-``` r
-table(bfast_monthly, ras.m)
-```
-
-    ##              ras.m
-    ## bfast_monthly     0     1
-    ##         FALSE 15646   162
-    ##         TRUE   1687  2105
-
-``` r
-table(bfast_quarter, ras.m)
-```
-
-    ##              ras.m
-    ## bfast_quarter     0     1
-    ##         FALSE 15662   374
-    ##         TRUE   1671  1893
-
-old code
---------
-
-``` r
-# single pixel
-defo_test <- st[st_geometry(prod[4,])]
-defo_test_ts <- as.vector(defo_test[,3,3,][[1]])
-test_ts <- as.ts(zoo(defo_test_ts, seq(2013, by = .08333333, length.out = 84))) 
-test <- bfastmonitor(test_ts, start = c(2018, 1))
-plot(test)
-
-# mean of this polygon
-mean_test <- st_apply(st[st_geometry(prod[2,])], "attributes", mean,  na.rm = TRUE) # aggregate
-defo_test_ts <- mean_test[][[1]]
-test_ts <- as.ts(zoo(defo_test_ts, seq(2013, by = .08333333, length.out = 84))) 
-test <- bfastmonitor(test_ts, start = c(2018, 1))
-plot(test)
-
-# calculate breaks for every single pixel
-vec <- c(0)
-count <- 1
-for (i in 1:5) {
-  for (j in 1:12) {
-    ts <- defo_test[,i,j,][[1]]
-    test_ts <- as.ts(zoo(ts, seq(2013, by = .08333333, length.out = 84)))
-    
-    if (length(unique(test_ts)) > 1) {
-      test_bf <- bfastmonitor(test_ts, start = c(2018, 1))
-      vec[count] <- test_bf$breakpoint
-    } else {
-        # vec[count] <- 99
-    }
-    count <- count + 1
-  }
+accuracies <- function(table1) {
+  # overall accuracy
+  P0 <- (table1[1] + table1[5]) / table1[9]
+  # error of omission, wrong in respect to reference data
+  # table1[2] / table1[3] # FALSE
+  # table1[4] / table1[6] # TRUE
+  # error of commission, wrong in respect to classified data
+  # table1[4] / table1[7] # FALSE
+  # table1[2] / table1[8] # TRUE
+  # producer's accuracy, Probability of classifying a pixel correctly
+  pa_f <- table1[1] / table1[3] # FALSE
+  pa_t <- table1[5] / table1[6] # TRUE
+  # user's accuracy, Probability of a pixel being the classified type
+  ua_f <- table1[1] / table1[7] # FALSE
+  ua_t <- table1[5] / table1[8] # TRUE
+  # kappa
+  # chance that both TRUE / FALSE randomly
+  tr <- (table1[8] / table1[9]) * (table1[6] / table1[9])
+  fr <- (table1[7] / table1[9]) * (table1[3] / table1[9])
+  Pe <- tr + fr
+  kappa <- (P0 - Pe) / (1 - Pe)
+  
+  return(list("Overall Accuracy" = P0*100, "Prod. Acc. FALSE" = pa_f, "Prod. Acc. TRUE" = pa_t, "User's Acc. FALSE" = ua_f, "User's Acc. TRUE" = ua_t, "Kappa" = kappa))
 }
-vec
 ```
 
 Results
 =======
+
+``` r
+Image(bfast_monthly2) + ggtitle("Monthly Data") + theme(plot.title = element_text(size=22))
+Image(bfast_quarter2) + ggtitle("Quarterly Data") + theme(plot.title = element_text(size=22))
+Image(prodes) + ggtitle("PRODES Data") + theme(plot.title = element_text(size=22))
+
+table1
+```
+
+    ##               prodes
+    ## bfast_monthly2     0     1   Sum
+    ##          FALSE 15599   170 15769
+    ##          TRUE   1734  2097  3831
+    ##          Sum   17333  2267 19600
+
+``` r
+table2
+```
+
+    ##               prodes
+    ## bfast_quarter2     0     1   Sum
+    ##          FALSE 15662   374 16036
+    ##          TRUE   1671  1893  3564
+    ##          Sum   17333  2267 19600
+
+``` r
+array(c(accuracies(table1), accuracies(table2)), dim = c(6,2), dimnames = list(c("Overall Accuracy", "Prod. Acc. FALSE", "Prod. Acc. TRUE", "User's Acc. FALSE", "User's Acc. TRUE", "Kappa"), c("monthly", "quarterly")))
+```
+
+    ##                   monthly   quarterly
+    ## Overall Accuracy  90.28571  89.56633 
+    ## Prod. Acc. FALSE  0.8999596 0.9035943
+    ## Prod. Acc. TRUE   0.925011  0.8350243
+    ## User's Acc. FALSE 0.9892194 0.9766775
+    ## User's Acc. TRUE  0.5473767 0.5311448
+    ## Kappa             0.6346743 0.5915353
+
+``` r
+# remove already deforested areas
+ras[] <- bfast_monthly2
+plot(ras)
+plot(st_geometry(prod), add = TRUE)
+
+ras[] <- bfast_quarter2
+plot(ras)
+plot(st_geometry(prod), add = TRUE)
+
+
+array(c(accuracies(addmargins(table(bfast_monthly2_prev, prodes))), accuracies(addmargins(table(bfast_quarter2_prev, prodes)))), dim = c(6,2), dimnames = list(c("Overall Accuracy", "Prod. Acc. FALSE", "Prod. Acc. TRUE", "User's Acc. FALSE", "User's Acc. TRUE", "Kappa"), c("monthly", "quarterly")))
+```
+
+    ##                   monthly   quarterly
+    ## Overall Accuracy  91.26871  89.14326 
+    ## Prod. Acc. FALSE  0.9109448 0.8994075
+    ## Prod. Acc. TRUE   0.925011  0.8350243
+    ## User's Acc. FALSE 0.9884956 0.9747229
+    ## User's Acc. TRUE  0.5948936 0.5399315
+    ## Kappa             0.6751202 0.5948577
+
+<img src="main_files/figure-markdown_github/results-1.png" width="33%" /><img src="main_files/figure-markdown_github/results-2.png" width="33%" /><img src="main_files/figure-markdown_github/results-3.png" width="33%" /><img src="main_files/figure-markdown_github/results-4.png" width="33%" /><img src="main_files/figure-markdown_github/results-5.png" width="33%" />
 
 Discussion
 ==========

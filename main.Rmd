@@ -2,9 +2,9 @@
 title: "Deforestation Detection"
 author: "Brian Pondi, Jonathan Bahlmann"
 date: "2/12/2021"
-output:
-  md_document:
-    variant: markdown_github
+output: 
+ md_document:
+   variant: markdown_github
 ---
 
 ```{r setup, include=FALSE}
@@ -63,8 +63,6 @@ prod <- read_sf("./yearly_deforestation/PRODES_cropped.shp")
 ```{r plot-AOI, warning=FALSE}
 # whats in it?
 # plot(st)
-plot(as(st[,,,6], "Raster"))
-plot(prod["YEAR"], add = TRUE)
 plot(prod["YEAR"])
 ```
 
@@ -121,7 +119,7 @@ plot(bf1)
 
 ## Calculate BFAST Over AOI
 
-```{r bfast-aoi, warning=FALSE}
+```{r bfast-aoi, warning=FALSE, eval=FALSE}
 bfast_on_tile <- function(gapfill_matrix, by, ts, order) {
   dims <- dim(gapfill_matrix)
   result <- matrix(rep(FALSE, dims[1]*dims[2]), ncol = dims[1])
@@ -141,64 +139,96 @@ bfast_on_tile <- function(gapfill_matrix, by, ts, order) {
   return(result)
 }
 
-bfast_monthly <- bfast_on_tile(gf_monthly$fill, by = .08333333, ts = 84, order = 3)
-bfast_quarter <- bfast_on_tile(gf_quarterly$fill, by = 0.25, ts = 28, order = 2)
+bfast_monthly3 <- bfast_on_tile(gf_monthly$fill, by = .08333333, ts = 84, order = 3)
+bfast_monthly2 <- bfast_on_tile(gf_monthly$fill, by = .08333333, ts = 84, order = 2)
+bfast_quarter2 <- bfast_on_tile(gf_quarterly$fill, by = 0.25, ts = 28, order = 2)
+saveRDS(bfast_monthly3, "bfast_monthly3.rds")
+saveRDS(bfast_monthly2, "bfast_monthly2.rds")
+saveRDS(bfast_quarter2, "bfast_quarter2.rds")
 # warning: too few observations in history period
 ```
 
-```{r plot-bfast-aoi, warning=FALSE}
-# plot(prod["YEAR"])
-ras <- rasterize(prod, as(st[,,,5], "Raster"), "YEAR")
-ras.m <- aperm(matrix(ras[], ncol = 140), c(2,1))
-ras.m[ras.m < 2019] <- FALSE
-ras.m[ras.m == 2019] <- TRUE
-ras.m[is.na(ras.m)] <- FALSE
-
-Image(bfast_monthly)
-Image(bfast_quarter)
-Image(ras.m)
-
-table(bfast_monthly, ras.m)
-table(bfast_quarter, ras.m)
+```{r load-bfast-tiles}
+# bfast_monthly3 <- readRDS("bfast_monthly3.rds")
+bfast_monthly2 <- readRDS("bfast_monthly2.rds")
+bfast_quarter2 <- readRDS("bfast_quarter2.rds")
 ```
 
-## old code
-```{r, eval=FALSE}
-# single pixel
-defo_test <- st[st_geometry(prod[4,])]
-defo_test_ts <- as.vector(defo_test[,3,3,][[1]])
-test_ts <- as.ts(zoo(defo_test_ts, seq(2013, by = .08333333, length.out = 84))) 
-test <- bfastmonitor(test_ts, start = c(2018, 1))
-plot(test)
+```{r plot-bfast-aoi, warning=FALSE}
+# rasterize PRODES data
+ras <- rasterize(prod, as(st[,,,5], "Raster"), "YEAR")
+prodes <- aperm(matrix(ras[], ncol = 140), c(2,1))
+prodes[prodes < 2019] <- FALSE
+prodes[prodes == 2019] <- TRUE
+prodes[is.na(prodes)] <- FALSE
 
-# mean of this polygon
-mean_test <- st_apply(st[st_geometry(prod[2,])], "attributes", mean,  na.rm = TRUE) # aggregate
-defo_test_ts <- mean_test[][[1]]
-test_ts <- as.ts(zoo(defo_test_ts, seq(2013, by = .08333333, length.out = 84))) 
-test <- bfastmonitor(test_ts, start = c(2018, 1))
-plot(test)
+# to mask out previous deforestation
+prodes_prev <- aperm(matrix(ras[], ncol = 140), c(2,1))
+prodes_prev[prodes_prev < 2019] <- TRUE
+prodes_prev[prodes_prev == 2019] <- FALSE
+prodes_prev[is.na(prodes_prev)] <- FALSE
 
-# calculate breaks for every single pixel
-vec <- c(0)
-count <- 1
-for (i in 1:5) {
-  for (j in 1:12) {
-    ts <- defo_test[,i,j,][[1]]
-    test_ts <- as.ts(zoo(ts, seq(2013, by = .08333333, length.out = 84)))
-    
-    if (length(unique(test_ts)) > 1) {
-      test_bf <- bfastmonitor(test_ts, start = c(2018, 1))
-      vec[count] <- test_bf$breakpoint
-    } else {
-        # vec[count] <- 99
-    }
-    count <- count + 1
-  }
+bfast_monthly2_prev <- bfast_monthly2
+bfast_monthly2_prev[prodes_prev == 1] <- NA
+
+bfast_quarter2_prev <- bfast_quarter2
+bfast_quarter2_prev[prodes_prev == 1] <- NA
+```
+
+```{r aoi-tables}
+table1 <- addmargins(table(bfast_monthly2, prodes))
+table2 <- addmargins(table(bfast_quarter2, prodes))
+
+accuracies <- function(table1) {
+  # overall accuracy
+  P0 <- (table1[1] + table1[5]) / table1[9]
+  # error of omission, wrong in respect to reference data
+  # table1[2] / table1[3] # FALSE
+  # table1[4] / table1[6] # TRUE
+  # error of commission, wrong in respect to classified data
+  # table1[4] / table1[7] # FALSE
+  # table1[2] / table1[8] # TRUE
+  # producer's accuracy, Probability of classifying a pixel correctly
+  pa_f <- table1[1] / table1[3] # FALSE
+  pa_t <- table1[5] / table1[6] # TRUE
+  # user's accuracy, Probability of a pixel being the classified type
+  ua_f <- table1[1] / table1[7] # FALSE
+  ua_t <- table1[5] / table1[8] # TRUE
+  # kappa
+  # chance that both TRUE / FALSE randomly
+  tr <- (table1[8] / table1[9]) * (table1[6] / table1[9])
+  fr <- (table1[7] / table1[9]) * (table1[3] / table1[9])
+  Pe <- tr + fr
+  kappa <- (P0 - Pe) / (1 - Pe)
+  
+  return(list("Overall Accuracy" = P0*100, "Prod. Acc. FALSE" = pa_f, "Prod. Acc. TRUE" = pa_t, "User's Acc. FALSE" = ua_f, "User's Acc. TRUE" = ua_t, "Kappa" = kappa))
 }
-vec
 ```
 
 # Results
+
+```{r results, fig.show="hold", out.width="33%"}
+Image(bfast_monthly2) + ggtitle("Monthly Data") + theme(plot.title = element_text(size=22))
+Image(bfast_quarter2) + ggtitle("Quarterly Data") + theme(plot.title = element_text(size=22))
+Image(prodes) + ggtitle("PRODES Data") + theme(plot.title = element_text(size=22))
+
+table1
+table2
+
+array(c(accuracies(table1), accuracies(table2)), dim = c(6,2), dimnames = list(c("Overall Accuracy", "Prod. Acc. FALSE", "Prod. Acc. TRUE", "User's Acc. FALSE", "User's Acc. TRUE", "Kappa"), c("monthly", "quarterly")))
+
+# remove already deforested areas
+ras[] <- bfast_monthly2
+plot(ras)
+plot(st_geometry(prod), add = TRUE)
+
+ras[] <- bfast_quarter2
+plot(ras)
+plot(st_geometry(prod), add = TRUE)
+
+
+array(c(accuracies(addmargins(table(bfast_monthly2_prev, prodes))), accuracies(addmargins(table(bfast_quarter2_prev, prodes)))), dim = c(6,2), dimnames = list(c("Overall Accuracy", "Prod. Acc. FALSE", "Prod. Acc. TRUE", "User's Acc. FALSE", "User's Acc. TRUE", "Kappa"), c("monthly", "quarterly")))
+```
 
 # Discussion
 
