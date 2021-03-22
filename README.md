@@ -1,5 +1,3 @@
--   Observe structure: Intro, Methods, Results, Discussion, Conclusion
-
 Introduction
 ============
 
@@ -59,20 +57,26 @@ library(bfast)
 library(zoo)
 library(raster)
 subdir = "landsat_monthly"
-subdir = "landsat_quarterly"
 f = paste0(subdir, "/", list.files(subdir))
 st = merge(read_stars(f)) # make stars object
 plot(st)
+subdir = "landsat_quarterly"
+f = paste0(subdir, "/", list.files(subdir))
+st_q = merge(read_stars(f)) # make stars object
+plot(st_q)
 ```
 
-![](main_files/figure-markdown_github/load-data-1.png)
+<img src="main_files/figure-markdown_github/load-data-1.png" width="50%" /><img src="main_files/figure-markdown_github/load-data-2.png" width="50%" />
 
 ``` r
 # load PRODES data
-# prod <- read_sf("./yearly_deforestation/yearly_deforestation.shp")
-# prod_3857 <- st_make_valid(st_transform(prod, crs = st_crs(st)))
-# prod_crop <- st_crop(prod_3857, st) # clip
-# write_sf(prod_crop, "./yearly_deforestation/PRODES_cropped.shp", overwrite = TRUE)
+prod <- read_sf("./yearly_deforestation/yearly_deforestation.shp")
+prod_3857 <- st_make_valid(st_transform(prod, crs = st_crs(st)))
+prod_crop <- st_crop(prod_3857, st) # clip
+write_sf(prod_crop, "./yearly_deforestation/PRODES_cropped.shp", overwrite = TRUE)
+```
+
+``` r
 prod <- read_sf("./yearly_deforestation/PRODES_cropped.shp")
 # prod <- prod[prod$YEAR < 2019,]
 ```
@@ -80,7 +84,7 @@ prod <- read_sf("./yearly_deforestation/PRODES_cropped.shp")
 ``` r
 # whats in it?
 # plot(st)
-plot(prod["YEAR"])
+plot(prod["YEAR"], axes = TRUE, main = "PRODES Deforestation Data Colored by Year")
 ```
 
 ![](main_files/figure-markdown_github/plot-AOI-1.png)
@@ -92,69 +96,75 @@ Prepare for Gapfill
 array is needed, with dimensions x, y, seasonal index (doy), year.
 
 ``` r
-# get pixels of whole dataset
-imgdata <- c(st[,,,][[1]])
+prep_gapfill <- function(st, doy, ts) {
+  # st is stars object, doy is day of year vector, ts is number of timesteps per year
+  
+  # get pixels of whole dataset
+  imgdata <- c(st[,,,][[1]])
 
-# make labels
-xlab <- seq(from = attr(st, "dimensions")[[1]]$offset, by = attr(st, "dimensions")[[1]]$delta, length.out = attr(st, "dimensions")[[1]]$to)
-ylab <- seq(from = attr(st, "dimensions")[[2]]$offset, by = attr(st, "dimensions")[[2]]$delta, length.out = attr(st, "dimensions")[[2]]$to)
-doi <- c(1, 32, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335)
-doi <- c(1, 91, 182, 274)
-years <- seq(2013,2019,1)
+  # make labels
+  xlab <- seq(from = attr(st, "dimensions")[[1]]$offset, by = attr(st, "dimensions")[[1]]$delta, length.out = attr(st, "dimensions")[[1]]$to)
+  ylab <- seq(from = attr(st, "dimensions")[[2]]$offset, by = attr(st, "dimensions")[[2]]$delta, length.out = attr(st, "dimensions")[[2]]$to)
+  years <- seq(2013,2019,1)
 
-# make array, transpose
-h <- array(imgdata, dim = c(140, 140, 4, 7), dimnames = list(xlab, ylab, doi, years))
-h <- aperm(h, c(2,1,3,4))
+  # make array, transpose
+  h <- array(imgdata, dim = c(140, 140, ts, 7), dimnames = list(xlab, ylab, doy, years))
+  # x, y is switched between stars and these arrays
+  h <- aperm(h, c(2,1,3,4))
+  return(h)
+}
 
-# all
-Image(h[,,2,3:4])
+doy_12 <- c(1, 32, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335)
+doy_4 <- c(1, 91, 182, 274)
+
+ma_monthly <- prep_gapfill(st, doy_12, 12)
+ma_quarter <- prep_gapfill(st_q, doy_4, 4)
 ```
-
-![](main_files/figure-markdown_github/create-gapfill-input-1.png)
-
-``` r
-# original stars
-plot(st[,,,c(5, 17)])
-```
-
-![](main_files/figure-markdown_github/create-gapfill-input-2.png)
 
 Gapfill
 -------
 
 ``` r
-# d <- Gapfill(h, iMax = 5)
-# saveRDS(d, "./iMax5_140_gapfilled_quarterly.rds")
+d <- Gapfill(ma_monthly, iMax = 5)
+saveRDS(d, "./monthly_iMax5_140_gapfilled.rds")
+e <- Gapfill(ma_quarter, iMax = 5)
+saveRDS(e, "./quarterly_iMax5_140_gapfilled.rds")
+f <- Gapfill(ma_quarter) # iMax defaults to infinite
+saveRDS(f, "./quarterly_iMaxInf_140_gapfilled.rds")
+```
+
+### Gapfill Results
+
+``` r
 gf_monthly <- readRDS("monthly_iMax5_140_gapfilled.rds")
-Image(gf_monthly$fill)
-```
-
-![](main_files/figure-markdown_github/do-gapfill-1.png)
-
-``` r
+Image(gf_monthly$fill, zlim = c(0.2, 1)) + ggtitle("Gapfilled Monthly Data")
 gf_quarterly <- readRDS("quarterly_iMax5_140_gapfilled.rds")
-Image(gf_quarterly$fill)
+Image(gf_quarterly$fill, zlim = c(0.2, 1)) + ggtitle("Gapfilled Quarterly Data")
+gf_quarterly_inf <- readRDS("quarterly_iMaxInf_140_gapfilled.rds")
+Image(gf_quarterly_inf$fill, zlim = c(0.2, 1)) + ggtitle("Gapfilled Quarterly Data with iMax = infinite")
 ```
 
-![](main_files/figure-markdown_github/do-gapfill-2.png)
+<img src="main_files/figure-markdown_github/load-gapfill-1.png" width="33%" /><img src="main_files/figure-markdown_github/load-gapfill-2.png" width="33%" /><img src="main_files/figure-markdown_github/load-gapfill-3.png" width="33%" />
 
-BFAST Test
-----------
+### Gapfill Results - Closeup
+
+Here, October to December of 2013 are plotted for comparison. First, The
+input data is plotted. Below that, the gapfilled dataset are plotted.
 
 ``` r
-# ts of a pixel
-x <- as.vector(gf_monthly$fill[15,20,,])
-# time must be given scaled to 1. -> monthly -> 1/12 = .08333333
-# zoo must also be used in between, exactly as in ?bfastmonitor example
-y <- as.ts(zoo(x, seq(2013, by = .08333333, length.out = 84))) 
-bf <- bfastmonitor(y, start = 2019, order = 3, verbose = TRUE) # 2019,6 works but monitoring period is then off chart
-plot(bf)
-
-x1 <- as.vector(gf_quarterly$fill[15,20,,])
-y1 <- as.ts(zoo(x1, seq(2013, by = .24999999, length.out = 28))) 
-bf1 <- bfastmonitor(y1, start = 2019, order = 2, verbose = TRUE) # 2019,6 works but monitoring period is then off chart
-plot(bf1)
+Image(ma_monthly[,,10:12,1], zlim = c(0.2, 1)) + ggtitle("Monthly Input Data, Oct - Dec 2013")
+Image(ma_quarter[,,4,1], zlim = c(0.2, 1)) + ggtitle("Quarterly Input Data, Last Quarter 2013")
 ```
+
+<img src="main_files/figure-markdown_github/zoom-gapfill-input-1.png" width="50%" /><img src="main_files/figure-markdown_github/zoom-gapfill-input-2.png" width="50%" />
+
+``` r
+Image(gf_monthly$fill[,,10:12,1], zlim = c(0.2, 1)) + ggtitle("Monthly Gapfilled Data, Oct - Dec 2013, iMax = 5")
+Image(gf_quarterly$fill[,,4,1], zlim = c(0.2, 1)) + ggtitle("Quarterly Gapfilled Data, Last Quarter 2013, iMax = 5")
+Image(gf_quarterly_inf$fill[,,4,1], zlim = c(0.2, 1)) + ggtitle("Quarterly Gapfilled Data, Last Quarter 2013, iMax = infinite")
+```
+
+<img src="main_files/figure-markdown_github/zoom_gapfill-1.png" width="33%" /><img src="main_files/figure-markdown_github/zoom_gapfill-2.png" width="33%" /><img src="main_files/figure-markdown_github/zoom_gapfill-3.png" width="33%" />
 
 Calculate BFAST Over AOI
 ------------------------
@@ -165,12 +175,12 @@ bfast_on_tile <- function(gapfill_matrix, by, ts, order) {
   result <- matrix(rep(FALSE, dims[1]*dims[2]), ncol = dims[1])
   for (i in 1:dims[1]) { # looping through x
     for (j in 1:dims[2]) { # loops through y
-      raw_px_ts <- as.vector(gapfill_matrix[i,j,,])
-      px_ts_obj <- as.ts(zoo(raw_px_ts, seq(2013, by = by, length.out = ts)))
-      bfm_obj <- bfastmonitor(px_ts_obj, start = 2019, order = order)
+      raw_px_ts <- as.vector(gapfill_matrix[i,j,,]) # create pixel timeseries vector
+      px_ts_obj <- as.ts(zoo(raw_px_ts, seq(2013, by = by, length.out = ts))) # make into ts object
+      bfm_obj <- bfastmonitor(px_ts_obj, start = 2019, order = order) # bfastmonitor of pixel timeseries
       brkpoint <- bfm_obj$breakpoint
-      if(!is.na(brkpoint)) {
-        result[i,j] <- TRUE
+      if(!is.na(brkpoint)) { # if breakpoint is available..
+        result[i,j] <- TRUE # .. write TRUE to solution raster
       } else {
         # FALSE
       }
@@ -182,20 +192,23 @@ bfast_on_tile <- function(gapfill_matrix, by, ts, order) {
 bfast_monthly3 <- bfast_on_tile(gf_monthly$fill, by = .08333333, ts = 84, order = 3)
 bfast_monthly2 <- bfast_on_tile(gf_monthly$fill, by = .08333333, ts = 84, order = 2)
 bfast_quarter2 <- bfast_on_tile(gf_quarterly$fill, by = 0.25, ts = 28, order = 2)
-saveRDS(bfast_monthly3, "bfast_monthly3.rds")
+# order = 2 was chosen because order 3 doesn't work on our quarterly aggreggated data
 saveRDS(bfast_monthly2, "bfast_monthly2.rds")
 saveRDS(bfast_quarter2, "bfast_quarter2.rds")
 # warning: too few observations in history period
 ```
 
 ``` r
-# bfast_monthly3 <- readRDS("bfast_monthly3.rds")
-bfast_monthly2 <- readRDS("bfast_monthly2.rds")
-bfast_quarter2 <- readRDS("bfast_quarter2.rds")
+bfast_monthly <- readRDS("bfast_monthly2.rds")
+bfast_quarter <- readRDS("bfast_quarter2.rds")
 ```
+
+To eliminate errors that may appear in already deforested areas, these
+arreas are simply excluded, according to PRODES reference data.
 
 ``` r
 # rasterize PRODES data
+# 2019 = TRUE, !2019 = FALSE
 ras <- rasterize(prod, as(st[,,,5], "Raster"), "YEAR")
 prodes <- aperm(matrix(ras[], ncol = 140), c(2,1))
 prodes[prodes < 2019] <- FALSE
@@ -203,31 +216,24 @@ prodes[prodes == 2019] <- TRUE
 prodes[is.na(prodes)] <- FALSE
 
 # to mask out previous deforestation
+# <2019 = TRUE, !<2019 = FALSE
 prodes_prev <- aperm(matrix(ras[], ncol = 140), c(2,1))
 prodes_prev[prodes_prev < 2019] <- TRUE
 prodes_prev[prodes_prev == 2019] <- FALSE
 prodes_prev[is.na(prodes_prev)] <- FALSE
 
-bfast_monthly2_prev <- bfast_monthly2
-bfast_monthly2_prev[prodes_prev == 1] <- NA
+bfast_monthly[prodes_prev == 1] <- FALSE
 
-bfast_quarter2_prev <- bfast_quarter2
-bfast_quarter2_prev[prodes_prev == 1] <- NA
+bfast_quarter[prodes_prev == 1] <- FALSE
 ```
 
 ``` r
-table1 <- addmargins(table(bfast_monthly2, prodes))
-table2 <- addmargins(table(bfast_quarter2, prodes))
+table1 <- addmargins(table(bfast_monthly, prodes))
+table2 <- addmargins(table(bfast_quarter, prodes))
 
 accuracies <- function(table1) {
   # overall accuracy
   P0 <- (table1[1] + table1[5]) / table1[9]
-  # error of omission, wrong in respect to reference data
-  # table1[2] / table1[3] # FALSE
-  # table1[4] / table1[6] # TRUE
-  # error of commission, wrong in respect to classified data
-  # table1[4] / table1[7] # FALSE
-  # table1[2] / table1[8] # TRUE
   # producer's accuracy, Probability of classifying a pixel correctly
   pa_f <- table1[1] / table1[3] # FALSE
   pa_t <- table1[5] / table1[6] # TRUE
@@ -241,7 +247,7 @@ accuracies <- function(table1) {
   Pe <- tr + fr
   kappa <- (P0 - Pe) / (1 - Pe)
   
-  return(list("Overall Accuracy" = P0*100, "Prod. Acc. FALSE" = pa_f, "Prod. Acc. TRUE" = pa_t, "User's Acc. FALSE" = ua_f, "User's Acc. TRUE" = ua_t, "Kappa" = kappa))
+  return(list("Overall Accuracy" = P0*100, "Prod. Acc. FALSE" = pa_f*100, "Prod. Acc. TRUE" = pa_t*100, "User's Acc. FALSE" = ua_f*100, "User's Acc. TRUE" = ua_t*100, "Kappa" = kappa))
 }
 ```
 
@@ -249,64 +255,42 @@ Results
 =======
 
 ``` r
-Image(bfast_monthly2) + ggtitle("Monthly Data") + theme(plot.title = element_text(size=22))
-Image(bfast_quarter2) + ggtitle("Quarterly Data") + theme(plot.title = element_text(size=22))
+Image(bfast_monthly) + ggtitle("Monthly Data") + theme(plot.title = element_text(size=22))
+Image(bfast_quarter) + ggtitle("Quarterly Data") + theme(plot.title = element_text(size=22))
 Image(prodes) + ggtitle("PRODES Data") + theme(plot.title = element_text(size=22))
 
 table1
 ```
 
-    ##               prodes
-    ## bfast_monthly2     0     1   Sum
-    ##          FALSE 15599   170 15769
-    ##          TRUE   1734  2097  3831
-    ##          Sum   17333  2267 19600
+    ##              prodes
+    ## bfast_monthly     0     1   Sum
+    ##         FALSE 15905   170 16075
+    ##         TRUE   1428  2097  3525
+    ##         Sum   17333  2267 19600
 
 ``` r
 table2
 ```
 
-    ##               prodes
-    ## bfast_quarter2     0     1   Sum
-    ##          FALSE 15662   374 16036
-    ##          TRUE   1671  1893  3564
-    ##          Sum   17333  2267 19600
+    ##              prodes
+    ## bfast_quarter     0     1   Sum
+    ##         FALSE 15720   374 16094
+    ##         TRUE   1613  1893  3506
+    ##         Sum   17333  2267 19600
 
 ``` r
 array(c(accuracies(table1), accuracies(table2)), dim = c(6,2), dimnames = list(c("Overall Accuracy", "Prod. Acc. FALSE", "Prod. Acc. TRUE", "User's Acc. FALSE", "User's Acc. TRUE", "Kappa"), c("monthly", "quarterly")))
 ```
 
     ##                   monthly   quarterly
-    ## Overall Accuracy  90.28571  89.56633 
-    ## Prod. Acc. FALSE  0.8999596 0.9035943
-    ## Prod. Acc. TRUE   0.925011  0.8350243
-    ## User's Acc. FALSE 0.9892194 0.9766775
-    ## User's Acc. TRUE  0.5473767 0.5311448
-    ## Kappa             0.6346743 0.5915353
+    ## Overall Accuracy  91.84694  89.86224 
+    ## Prod. Acc. FALSE  91.76138  90.69405 
+    ## Prod. Acc. TRUE   92.5011   83.50243 
+    ## User's Acc. FALSE 98.94246  97.67615 
+    ## User's Acc. TRUE  59.48936  53.99315 
+    ## Kappa             0.6788956 0.5995541
 
-``` r
-# remove already deforested areas
-ras[] <- bfast_monthly2
-plot(ras)
-plot(st_geometry(prod), add = TRUE)
-
-ras[] <- bfast_quarter2
-plot(ras)
-plot(st_geometry(prod), add = TRUE)
-
-
-array(c(accuracies(addmargins(table(bfast_monthly2_prev, prodes))), accuracies(addmargins(table(bfast_quarter2_prev, prodes)))), dim = c(6,2), dimnames = list(c("Overall Accuracy", "Prod. Acc. FALSE", "Prod. Acc. TRUE", "User's Acc. FALSE", "User's Acc. TRUE", "Kappa"), c("monthly", "quarterly")))
-```
-
-    ##                   monthly   quarterly
-    ## Overall Accuracy  91.26871  89.14326 
-    ## Prod. Acc. FALSE  0.9109448 0.8994075
-    ## Prod. Acc. TRUE   0.925011  0.8350243
-    ## User's Acc. FALSE 0.9884956 0.9747229
-    ## User's Acc. TRUE  0.5948936 0.5399315
-    ## Kappa             0.6751202 0.5948577
-
-<img src="main_files/figure-markdown_github/results-1.png" width="33%" /><img src="main_files/figure-markdown_github/results-2.png" width="33%" /><img src="main_files/figure-markdown_github/results-3.png" width="33%" /><img src="main_files/figure-markdown_github/results-4.png" width="33%" /><img src="main_files/figure-markdown_github/results-5.png" width="33%" />
+<img src="main_files/figure-markdown_github/results-1.png" width="33%" /><img src="main_files/figure-markdown_github/results-2.png" width="33%" /><img src="main_files/figure-markdown_github/results-3.png" width="33%" />
 
 Discussion
 ==========
