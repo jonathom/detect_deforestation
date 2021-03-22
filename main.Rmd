@@ -2,7 +2,7 @@
 title: "Deforestation Detection"
 author: "Brian Pondi, Jonathan Bahlmann"
 date: "2/12/2021"
-output: 
+output:
  md_document:
    variant: markdown_github
 ---
@@ -148,13 +148,13 @@ Image(gf_quarterly$fill[,,4,1], zlim = c(0.2, 1)) + ggtitle("Quarterly Gapfilled
 
 Just to see what the Gapfill algorithm is capable of achieving, observe what it yields when letting `iMax` default to inifity. This allows the function to endlessly increase the neighbourhood for predicting `NA` values.
 ```{r plot-inf-gf, fig.show="hold", out.width="50%", fig.align="center"}
-gf_quarterly_inf <- readRDS("quarterly_iMaxInf_140_gapfilled.rds")
+gf_quarterly_inf <- readRDS("./appendix/quarterly_iMaxInf_140_gapfilled.rds")
 Image(gf_quarterly_inf$fill[,,4,1], zlim = c(0.2, 1)) + ggtitle("Quarterly Gapfilled Data, Last Quarter 2013, with iMax=inf")
 ```
 
 ## Calculate BFAST Over AOI
 
-```{r bfast-aoi, warning=FALSE, eval=FALSE}
+```{r bfast-aoi, warning=FALSE}
 bfast_on_tile <- function(gapfill_matrix, by, ts, order) {
   dims <- dim(gapfill_matrix)
   result <- matrix(rep(FALSE, dims[1]*dims[2]), ncol = dims[1])
@@ -173,7 +173,9 @@ bfast_on_tile <- function(gapfill_matrix, by, ts, order) {
   }
   return(result)
 }
+```
 
+```{r, eval=FALSE}
 bfast_monthly2 <- bfast_on_tile(gf_monthly$fill, by = .08333333, ts = 84, order = 2)
 bfast_quarter2 <- bfast_on_tile(gf_quarterly$fill, by = 0.25, ts = 28, order = 2)
 # order = 2 was chosen because order 3 doesn't work on our quarterly aggreggated data
@@ -295,30 +297,30 @@ Verbesselt, J., Zeileis, A., & Herold, M. (2013). Near real-time disturbance det
 
 # Appendix
 
-## A) Investigate iMax Parameter
+## A) Investigate `iMax` Parameter of `Gapfill` Function
 We investiagted different values for the `iMax` parameter in Gapfill algorithm, and found that results were not significantly different (did neither improve nor impair accuracies), although the calculation using `iMax = infinite`, i.e. completely gapfilled data, resulted in the highest accuracies. The code for this is found here.
 
 Create gapfilled datasets and calculate bfast on tiles.
 ``` {r, eval=FALSE}
 f <- Gapfill(ma_quarter) # iMax defaults to infinite
-saveRDS(f, "./quarterly_iMaxInf_140_gapfilled.rds")
+saveRDS(f, "./appendix/quarterly_iMaxInf_140_gapfilled.rds")
 g <- Gapfill(ma_quarter, iMax = 1) #
-saveRDS(g, "./quarterly_iMax1_140_gapfilled.rds")
+saveRDS(g, "./appendix/quarterly_iMax1_140_gapfilled.rds")
 
 bfast_quarter_inf <- bfast_on_tile(f$fill, by = 0.25, ts = 28, order = 2)
 bfast_quarter_1 <- bfast_on_tile(g$fill, by = 0.25, ts = 28, order = 2)
-saveRDS(bfast_quarter_inf, "bfast_quarter_inf.rds")
-saveRDS(bfast_quarter_1, "bfast_quarter_1.rds")
+saveRDS(bfast_quarter_inf, "./appendix/bfast_quarter_inf.rds")
+saveRDS(bfast_quarter_1, "./appendix/bfast_quarter_1.rds")
 ```
 
 Load results, see above for details.
 ```{r}
 # load bfast results
-bfast_quarter_inf <- readRDS("bfast_quarter_inf.rds")
-bfast_quarter_1 <- readRDS("bfast_quarter_1.rds")
+bfast_quarter_inf <- readRDS("./appendix/bfast_quarter_inf.rds")
+bfast_quarter_1 <- readRDS("./appendix/bfast_quarter_1.rds")
 # exclude existing deforestation
-bfast_quarter_inf[prodes_prev == 1] <- FALSE
-bfast_quarter_1[prodes_prev == 1] <- FALSE
+bfast_quarter_inf[prodes_prev == 1] <- NA
+bfast_quarter_1[prodes_prev == 1] <- NA
 # create accuracy tables
 table3 <- addmargins(table(bfast_quarter_inf, reference))
 table4 <- addmargins(table(bfast_quarter_1, reference))
@@ -326,3 +328,43 @@ table4 <- addmargins(table(bfast_quarter_1, reference))
 array(c(accuracies(table4), accuracies(table2), accuracies(table3)), dim = c(6,3), dimnames = list(c("Overall Accuracy", "Prod. Acc. FALSE", "Prod. Acc. TRUE", "User's Acc. FALSE", "User's Acc. TRUE", "Kappa"), c("iMax = 1", "iMax = 5", "iMax = inf")))
 ```
 
+## B) Investigate `order` Parameter of Function `bfastmonitor`
+
+To make sure that by changing the value of parameter `order` from 3 (default) to 2, no completely unexpected effects are introduced, a quick try-out is done here. The value 2 actually leads to the worst accuracy, but the difference is not considered significant.
+```{r, eval=FALSE}
+bfast_monthly1 <- bfast_on_tile(gf_monthly$fill, by = .08333333, ts = 84, order = 1)
+saveRDS(bfast_monthly1, "./appendix/bfast_monthly1.rds")
+bfast_monthly3 <- bfast_on_tile(gf_monthly$fill, by = .08333333, ts = 84, order = 3)
+saveRDS(bfast_monthly3, "./appendix/bfast_monthly3.rds")
+```
+
+```{r}
+bfast_monthly1 <- readRDS("./appendix/bfast_monthly1.rds")
+bfast_monthly3 <- readRDS("./appendix/bfast_monthly3.rds")
+
+bfast_monthly1[prodes_prev == 1] <- NA
+bfast_monthly3[prodes_prev == 1] <- NA
+# create accuracy tables
+table5 <- addmargins(table(bfast_monthly1, reference))
+table6 <- addmargins(table(bfast_monthly3, reference))
+# print
+array(c(accuracies(table5), accuracies(table1), accuracies(table6)), dim = c(6,3), dimnames = list(c("Overall Accuracy", "Prod. Acc. FALSE", "Prod. Acc. TRUE", "User's Acc. FALSE", "User's Acc. TRUE", "Kappa"), c("order = 1", "order = 2", "order = 3")))
+```
+
+## C) Gapfill vs No Gapfill
+
+To investigate what kind of effect the Gapfill function has in the first place, since BFAST doesn't necessarily need a gapfilling method.
+```{r, eval=FALSE}
+bfast_monthly_nofill <- bfast_on_tile(ma_monthly, by = .08333333, ts = 84, order = 2)
+saveRDS(bfast_monthly_nofill, "./appendix/bfast_monthly_nofill.rds")
+```
+
+```{r}
+bfast_monthly_nofill <- readRDS("./appendix/bfast_monthly_nofill.rds")
+
+bfast_monthly_nofill[prodes_prev == 1] <- NA
+# create accuracy tables
+table7 <- addmargins(table(bfast_monthly_nofill, reference))
+# print
+array(c(accuracies(table1), accuracies(table7)), dim = c(6,2), dimnames = list(c("Overall Accuracy", "Prod. Acc. FALSE", "Prod. Acc. TRUE", "User's Acc. FALSE", "User's Acc. TRUE", "Kappa"), c("Gapfilled Data", "Original Data")))
+```

@@ -214,7 +214,7 @@ function to endlessly increase the neighbourhood for predicting `NA`
 values.
 
 ``` r
-gf_quarterly_inf <- readRDS("quarterly_iMaxInf_140_gapfilled.rds")
+gf_quarterly_inf <- readRDS("./appendix/quarterly_iMaxInf_140_gapfilled.rds")
 Image(gf_quarterly_inf$fill[,,4,1], zlim = c(0.2, 1)) + ggtitle("Quarterly Gapfilled Data, Last Quarter 2013, with iMax=inf")
 ```
 
@@ -242,7 +242,9 @@ bfast_on_tile <- function(gapfill_matrix, by, ts, order) {
   }
   return(result)
 }
+```
 
+``` r
 bfast_monthly2 <- bfast_on_tile(gf_monthly$fill, by = .08333333, ts = 84, order = 2)
 bfast_quarter2 <- bfast_on_tile(gf_quarterly$fill, by = 0.25, ts = 28, order = 2)
 # order = 2 was chosen because order 3 doesn't work on our quarterly aggreggated data
@@ -290,8 +292,8 @@ deter_prev[is.na(deter_prev)] <- FALSE
 
 reference <- deter | prodes
 
-bfast_monthly[prodes_prev == 1] <- FALSE
-bfast_quarter[prodes_prev == 1] <- FALSE
+bfast_monthly[prodes_prev == 1] <- NA
+bfast_quarter[prodes_prev == 1] <- NA
 ```
 
 ``` r
@@ -337,9 +339,9 @@ addmargins(table(bfast_monthly, reference))
 
     ##              reference
     ## bfast_monthly FALSE  TRUE   Sum
-    ##         FALSE 15608   467 16075
+    ##         FALSE 14310   467 14777
     ##         TRUE    929  2596  3525
-    ##         Sum   16537  3063 19600
+    ##         Sum   15239  3063 18302
 
 ``` r
 addmargins(table(bfast_quarter, reference))
@@ -347,21 +349,21 @@ addmargins(table(bfast_quarter, reference))
 
     ##              reference
     ## bfast_quarter FALSE  TRUE   Sum
-    ##         FALSE 15368   726 16094
+    ##         FALSE 14070   726 14796
     ##         TRUE   1169  2337  3506
-    ##         Sum   16537  3063 19600
+    ##         Sum   15239  3063 18302
 
 ``` r
 array(c(accuracies(table1), accuracies(table2)), dim = c(6,2), dimnames = list(c("Overall Accuracy", "Prod. Acc. FALSE", "Prod. Acc. TRUE", "User's Acc. FALSE", "User's Acc. TRUE", "Kappa"), c("monthly", "quarterly")))
 ```
 
-    ##                   monthly  quarterly
-    ## Overall Accuracy  92.87755 90.33163 
-    ## Prod. Acc. FALSE  94.38229 92.931   
-    ## Prod. Acc. TRUE   84.75351 76.29775 
-    ## User's Acc. FALSE 97.09487 95.489   
-    ## User's Acc. TRUE  73.64539 66.65716 
-    ## Kappa             0.745546 0.6537672
+    ##                   monthly   quarterly
+    ## Overall Accuracy  92.37242  89.64594 
+    ## Prod. Acc. FALSE  93.9038   92.32889 
+    ## Prod. Acc. TRUE   84.75351  76.29775 
+    ## User's Acc. FALSE 96.83968  95.09327 
+    ## User's Acc. TRUE  73.64539  66.65716 
+    ## Kappa             0.7418697 0.6487801
 
 Discussion
 ==========
@@ -418,8 +420,8 @@ disturbance detection using satellite image time series.
 Appendix
 ========
 
-A) Investigate iMax Parameter
------------------------------
+A) Investigate `iMax` Parameter of `Gapfill` Function
+-----------------------------------------------------
 
 We investiagted different values for the `iMax` parameter in Gapfill
 algorithm, and found that results were not significantly different (did
@@ -431,25 +433,25 @@ Create gapfilled datasets and calculate bfast on tiles.
 
 ``` r
 f <- Gapfill(ma_quarter) # iMax defaults to infinite
-saveRDS(f, "./quarterly_iMaxInf_140_gapfilled.rds")
+saveRDS(f, "./appendix/quarterly_iMaxInf_140_gapfilled.rds")
 g <- Gapfill(ma_quarter, iMax = 1) #
-saveRDS(g, "./quarterly_iMax1_140_gapfilled.rds")
+saveRDS(g, "./appendix/quarterly_iMax1_140_gapfilled.rds")
 
 bfast_quarter_inf <- bfast_on_tile(f$fill, by = 0.25, ts = 28, order = 2)
 bfast_quarter_1 <- bfast_on_tile(g$fill, by = 0.25, ts = 28, order = 2)
-saveRDS(bfast_quarter_inf, "bfast_quarter_inf.rds")
-saveRDS(bfast_quarter_1, "bfast_quarter_1.rds")
+saveRDS(bfast_quarter_inf, "./appendix/bfast_quarter_inf.rds")
+saveRDS(bfast_quarter_1, "./appendix/bfast_quarter_1.rds")
 ```
 
 Load results, see above for details.
 
 ``` r
 # load bfast results
-bfast_quarter_inf <- readRDS("bfast_quarter_inf.rds")
-bfast_quarter_1 <- readRDS("bfast_quarter_1.rds")
+bfast_quarter_inf <- readRDS("./appendix/bfast_quarter_inf.rds")
+bfast_quarter_1 <- readRDS("./appendix/bfast_quarter_1.rds")
 # exclude existing deforestation
-bfast_quarter_inf[prodes_prev == 1] <- FALSE
-bfast_quarter_1[prodes_prev == 1] <- FALSE
+bfast_quarter_inf[prodes_prev == 1] <- NA
+bfast_quarter_1[prodes_prev == 1] <- NA
 # create accuracy tables
 table3 <- addmargins(table(bfast_quarter_inf, reference))
 table4 <- addmargins(table(bfast_quarter_1, reference))
@@ -458,9 +460,74 @@ array(c(accuracies(table4), accuracies(table2), accuracies(table3)), dim = c(6,3
 ```
 
     ##                   iMax = 1  iMax = 5  iMax = inf
-    ## Overall Accuracy  90.31122  90.33163  90.45918  
-    ## Prod. Acc. FALSE  92.91286  92.931    93.08823  
+    ## Overall Accuracy  89.62408  89.64594  89.78254  
+    ## Prod. Acc. FALSE  92.30921  92.32889  92.49951  
     ## Prod. Acc. TRUE   76.2651   76.29775  76.2651   
-    ## User's Acc. FALSE 95.48223  95.489    95.49035  
+    ## User's Acc. FALSE 95.08585  95.09327  95.09546  
     ## User's Acc. TRUE  66.59065  66.65716  67.14573  
-    ## Kappa             0.6531235 0.6537672 0.6571723
+    ## Kappa             0.6481255 0.6487801 0.6522559
+
+B) Investigate `order` Parameter of Function `bfastmonitor`
+-----------------------------------------------------------
+
+To make sure that by changing the value of parameter `order` from 3
+(default) to 2, no completely unexpected effects are introduced, a quick
+try-out is done here. The value 2 actually leads to the worst accuracy,
+but the difference is not considered significant.
+
+``` r
+bfast_monthly1 <- bfast_on_tile(gf_monthly$fill, by = .08333333, ts = 84, order = 1)
+saveRDS(bfast_monthly1, "./appendix/bfast_monthly1.rds")
+bfast_monthly3 <- bfast_on_tile(gf_monthly$fill, by = .08333333, ts = 84, order = 3)
+saveRDS(bfast_monthly3, "./appendix/bfast_monthly3.rds")
+```
+
+``` r
+bfast_monthly1 <- readRDS("./appendix/bfast_monthly1.rds")
+bfast_monthly3 <- readRDS("./appendix/bfast_monthly3.rds")
+
+bfast_monthly1[prodes_prev == 1] <- NA
+bfast_monthly3[prodes_prev == 1] <- NA
+# create accuracy tables
+table5 <- addmargins(table(bfast_monthly1, reference))
+table6 <- addmargins(table(bfast_monthly3, reference))
+# print
+array(c(accuracies(table5), accuracies(table1), accuracies(table6)), dim = c(6,3), dimnames = list(c("Overall Accuracy", "Prod. Acc. FALSE", "Prod. Acc. TRUE", "User's Acc. FALSE", "User's Acc. TRUE", "Kappa"), c("order = 1", "order = 2", "order = 3")))
+```
+
+    ##                   order = 1 order = 2 order = 3
+    ## Overall Accuracy  92.42159  92.37242  92.59644 
+    ## Prod. Acc. FALSE  93.92349  93.9038   94.17285 
+    ## Prod. Acc. TRUE   84.9494   84.75351  84.75351 
+    ## User's Acc. FALSE 96.87965  96.83968  96.84843 
+    ## User's Acc. TRUE  73.75283  73.64539  74.51206 
+    ## Kappa             0.7436284 0.7418697 0.7481808
+
+C) Gapfill vs No Gapfill
+------------------------
+
+To investigate what kind of effect the Gapfill function has in the first
+place, since BFAST doesn’t necessarily need a gapfilling method.
+
+``` r
+bfast_monthly_nofill <- bfast_on_tile(ma_monthly, by = .08333333, ts = 84, order = 2)
+saveRDS(bfast_monthly_nofill, "./appendix/bfast_monthly_nofill.rds")
+```
+
+``` r
+bfast_monthly_nofill <- readRDS("./appendix/bfast_monthly_nofill.rds")
+
+bfast_monthly_nofill[prodes_prev == 1] <- NA
+# create accuracy tables
+table7 <- addmargins(table(bfast_monthly_nofill, reference))
+# print
+array(c(accuracies(table1), accuracies(table7)), dim = c(6,2), dimnames = list(c("Overall Accuracy", "Prod. Acc. FALSE", "Prod. Acc. TRUE", "User's Acc. FALSE", "User's Acc. TRUE", "Kappa"), c("Gapfilled Data", "Original Data")))
+```
+
+    ##                   Gapfilled Data Original Data
+    ## Overall Accuracy  92.37242       90.92995     
+    ## Prod. Acc. FALSE  93.9038        92.01391     
+    ## Prod. Acc. TRUE   84.75351       85.53706     
+    ## User's Acc. FALSE 96.83968       96.93744     
+    ## User's Acc. TRUE  73.64539       68.28251     
+    ## Kappa             0.7418697      0.7043996
