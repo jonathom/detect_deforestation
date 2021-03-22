@@ -45,6 +45,8 @@ Input Data and Preparations
 -   Package description
 -   PRODES data sorted by years can be found here: [PRODES yearly
     deforestation](http://terrabrasilis.dpi.inpe.br/download/dataset/legal-amz-prodes/vector/yearly_deforestation.zip)
+-   DETER data
+    [DETER](http://terrabrasilis.dpi.inpe.br/file-delivery/download/deter-amz/shape)
 
 As seen in “final.Rmd”. The subdirectory `L8cube_subregion` contains a
 NDVI time series as single `.tif` files, a file per acquisition, as
@@ -56,6 +58,7 @@ library(gapfill)
 library(bfast)
 library(zoo)
 library(raster)
+library(viridis)
 subdir = "landsat_monthly"
 f = paste0(subdir, "/", list.files(subdir))
 st = merge(read_stars(f)) # make stars object
@@ -74,20 +77,25 @@ prod <- read_sf("./yearly_deforestation/yearly_deforestation.shp")
 prod_3857 <- st_make_valid(st_transform(prod, crs = st_crs(st)))
 prod_crop <- st_crop(prod_3857, st) # clip
 write_sf(prod_crop, "./yearly_deforestation/PRODES_cropped.shp", overwrite = TRUE)
+
+deter <- read_sf("./yearly_deforestation/deter_public.shp")
+deter_3857 <- st_make_valid(st_transform(deter, crs = st_crs(st)))
+deter_crop <- st_crop(deter_3857, st)
+write_sf(deter_crop, "./yearly_deforestation/DETER_cropped.shp", overwrite = TRUE)
 ```
 
 ``` r
 prod <- read_sf("./yearly_deforestation/PRODES_cropped.shp")
-# prod <- prod[prod$YEAR < 2019,]
+dete <- read_sf("./yearly_deforestation/DETER_cropped.shp")
+
+cols <- viridis::magma(6)
+dete$VIEW_DATE <- as.numeric(format(as.Date(dete$VIEW_DATE, format="%d/%m/%Y"),"%Y")) # year as date
+
+plot(prod["YEAR"], pal = cols[2:4], main = "PRODES Deforestation Data Colored by Year")
+plot(dete["VIEW_DATE"], pal = cols, main = "DETER Deforestation Data Colored by Year")
 ```
 
-``` r
-# whats in it?
-# plot(st)
-plot(prod["YEAR"], axes = TRUE, main = "PRODES Deforestation Data Colored by Year")
-```
-
-![](main_files/figure-markdown_github/plot-AOI-1.png)
+<img src="main_files/figure-markdown_github/plot-AOI-1.png" width="50%" /><img src="main_files/figure-markdown_github/plot-AOI-2.png" width="50%" />
 
 Prepare for Gapfill
 -------------------
@@ -213,13 +221,20 @@ To eliminate errors that may appear in already deforested areas, these
 arreas are simply excluded, according to PRODES reference data.
 
 ``` r
-# rasterize PRODES data
+# rasterize reference data
 # 2019 = TRUE, !2019 = FALSE
 ras <- rasterize(prod, as(st[,,,5], "Raster"), "YEAR")
 prodes <- aperm(matrix(ras[], ncol = 140), c(2,1))
 prodes[prodes < 2019] <- FALSE
 prodes[prodes == 2019] <- TRUE
 prodes[is.na(prodes)] <- FALSE
+
+rus <- rasterize(dete, as(st[,,,5], "Raster"), "VIEW_DATE")
+rus[rus < 2019] <- 0
+rus[rus > 2019] <- 0
+rus[is.na(rus[])] <- 0
+rus[rus != 0] <- 1
+deter <- aperm(matrix(rus[], ncol = 140), c(2,1))
 
 # to mask out previous deforestation
 # <2019 = TRUE, !<2019 = FALSE
@@ -228,13 +243,21 @@ prodes_prev[prodes_prev < 2019] <- TRUE
 prodes_prev[prodes_prev == 2019] <- FALSE
 prodes_prev[is.na(prodes_prev)] <- FALSE
 
+# not used, PRODES more conservative
+deter_prev <- aperm(matrix(rasterize(dete, as(st[,,,5], "Raster"), "VIEW_DATE")[], ncol = 140), c(2,1))
+deter_prev[deter_prev < 2019] <- TRUE
+deter_prev[deter_prev >= 2019] <- FALSE
+deter_prev[is.na(deter_prev)] <- FALSE
+
+reference <- deter | prodes
+
 bfast_monthly[prodes_prev == 1] <- FALSE
 bfast_quarter[prodes_prev == 1] <- FALSE
 ```
 
 ``` r
-table1 <- addmargins(table(bfast_monthly, prodes))
-table2 <- addmargins(table(bfast_quarter, prodes))
+table1 <- addmargins(table(bfast_monthly, reference))
+table2 <- addmargins(table(bfast_quarter, reference))
 
 accuracies <- function(table1) {
   # overall accuracy
@@ -262,47 +285,44 @@ Results
 ``` r
 Image(bfast_monthly, colbarTitle = "TRUE/FALSE") + ggtitle("Monthly Data") + theme(plot.title = element_text(size=22))
 Image(bfast_quarter, colbarTitle = "TRUE/FALSE") + ggtitle("Quarterly Data") + theme(plot.title = element_text(size=22))
-```
 
-<img src="main_files/figure-markdown_github/results-1.png" width="50%" /><img src="main_files/figure-markdown_github/results-2.png" width="50%" />
-
-``` r
 Image(prodes, colbarTitle = "TRUE/FALSE") + ggtitle("PRODES Data") + theme(plot.title = element_text(size=22))
+Image(reference, colbarTitle = "TRUE/FALSE") + ggtitle("PRODES and DETER Data") + theme(plot.title = element_text(size=22))
 ```
 
-<img src="main_files/figure-markdown_github/unnamed-chunk-1-1.png" width="50%" style="display: block; margin: auto;" />
+<img src="main_files/figure-markdown_github/results-1.png" width="50%" /><img src="main_files/figure-markdown_github/results-2.png" width="50%" /><img src="main_files/figure-markdown_github/results-3.png" width="50%" /><img src="main_files/figure-markdown_github/results-4.png" width="50%" />
 
 ``` r
-table1
+addmargins(table(bfast_monthly, reference))
 ```
 
-    ##              prodes
-    ## bfast_monthly     0     1   Sum
-    ##         FALSE 15905   170 16075
-    ##         TRUE   1428  2097  3525
-    ##         Sum   17333  2267 19600
+    ##              reference
+    ## bfast_monthly FALSE  TRUE   Sum
+    ##         FALSE 15608   467 16075
+    ##         TRUE    929  2596  3525
+    ##         Sum   16537  3063 19600
 
 ``` r
-table2
+addmargins(table(bfast_quarter, reference))
 ```
 
-    ##              prodes
-    ## bfast_quarter     0     1   Sum
-    ##         FALSE 15720   374 16094
-    ##         TRUE   1613  1893  3506
-    ##         Sum   17333  2267 19600
+    ##              reference
+    ## bfast_quarter FALSE  TRUE   Sum
+    ##         FALSE 15368   726 16094
+    ##         TRUE   1169  2337  3506
+    ##         Sum   16537  3063 19600
 
 ``` r
 array(c(accuracies(table1), accuracies(table2)), dim = c(6,2), dimnames = list(c("Overall Accuracy", "Prod. Acc. FALSE", "Prod. Acc. TRUE", "User's Acc. FALSE", "User's Acc. TRUE", "Kappa"), c("monthly", "quarterly")))
 ```
 
-    ##                   monthly   quarterly
-    ## Overall Accuracy  91.84694  89.86224 
-    ## Prod. Acc. FALSE  91.76138  90.69405 
-    ## Prod. Acc. TRUE   92.5011   83.50243 
-    ## User's Acc. FALSE 98.94246  97.67615 
-    ## User's Acc. TRUE  59.48936  53.99315 
-    ## Kappa             0.6788956 0.5995541
+    ##                   monthly  quarterly
+    ## Overall Accuracy  92.87755 90.33163 
+    ## Prod. Acc. FALSE  94.38229 92.931   
+    ## Prod. Acc. TRUE   84.75351 76.29775 
+    ## User's Acc. FALSE 97.09487 95.489   
+    ## User's Acc. TRUE  73.64539 66.65716 
+    ## Kappa             0.745546 0.6537672
 
 Discussion
 ==========
@@ -358,16 +378,16 @@ bfast_quarter_1 <- readRDS("bfast_quarter_1.rds")
 bfast_quarter_inf[prodes_prev == 1] <- FALSE
 bfast_quarter_1[prodes_prev == 1] <- FALSE
 # create accuracy tables
-table3 <- addmargins(table(bfast_quarter_inf, prodes))
-table4 <- addmargins(table(bfast_quarter_1, prodes))
+table3 <- addmargins(table(bfast_quarter_inf, reference))
+table4 <- addmargins(table(bfast_quarter_1, reference))
 # print
 array(c(accuracies(table4), accuracies(table2), accuracies(table3)), dim = c(6,3), dimnames = list(c("Overall Accuracy", "Prod. Acc. FALSE", "Prod. Acc. TRUE", "User's Acc. FALSE", "User's Acc. TRUE", "Kappa"), c("iMax = 1", "iMax = 5", "iMax = inf")))
 ```
 
     ##                   iMax = 1  iMax = 5  iMax = inf
-    ## Overall Accuracy  89.85204  89.86224  90.0102   
-    ## Prod. Acc. FALSE  90.68251  90.69405  90.85559  
-    ## Prod. Acc. TRUE   83.50243  83.50243  83.54654  
-    ## User's Acc. FALSE 97.67586  97.67615  97.68625  
-    ## User's Acc. TRUE  53.96237  53.99315  54.44093  
-    ## Kappa             0.5992752 0.5995541 0.6037412
+    ## Overall Accuracy  90.31122  90.33163  90.45918  
+    ## Prod. Acc. FALSE  92.91286  92.931    93.08823  
+    ## Prod. Acc. TRUE   76.2651   76.29775  76.2651   
+    ## User's Acc. FALSE 95.48223  95.489    95.49035  
+    ## User's Acc. TRUE  66.59065  66.65716  67.14573  
+    ## Kappa             0.6531235 0.6537672 0.6571723

@@ -2,9 +2,9 @@
 title: "Deforestation Detection"
 author: "Brian Pondi, Jonathan Bahlmann"
 date: "2/12/2021"
-output: 
- md_document:
-   variant: markdown_github
+output: html_output 
+ #md_document:
+   #variant: markdown_github
 ---
 
 ```{r setup, include=FALSE}
@@ -35,6 +35,7 @@ BFAST(Breaks For Additive Season and Trend)
 
 * Package description
 * PRODES data sorted by years can be found here: [PRODES yearly deforestation](http://terrabrasilis.dpi.inpe.br/download/dataset/legal-amz-prodes/vector/yearly_deforestation.zip)
+* DETER data [DETER](http://terrabrasilis.dpi.inpe.br/file-delivery/download/deter-amz/shape)
 
 As seen in "final.Rmd". The subdirectory `L8cube_subregion` contains a NDVI time series as single `.tif` files, a file per acquisition, as input data.
 ```{r load-data, message=FALSE, warning=FALSE, fig.show="hold", out.width="50%"}
@@ -43,6 +44,7 @@ library(gapfill)
 library(bfast)
 library(zoo)
 library(raster)
+library(viridis)
 subdir = "landsat_monthly"
 f = paste0(subdir, "/", list.files(subdir))
 st = merge(read_stars(f)) # make stars object
@@ -59,17 +61,22 @@ prod <- read_sf("./yearly_deforestation/yearly_deforestation.shp")
 prod_3857 <- st_make_valid(st_transform(prod, crs = st_crs(st)))
 prod_crop <- st_crop(prod_3857, st) # clip
 write_sf(prod_crop, "./yearly_deforestation/PRODES_cropped.shp", overwrite = TRUE)
+
+deter <- read_sf("./yearly_deforestation/deter_public.shp")
+deter_3857 <- st_make_valid(st_transform(deter, crs = st_crs(st)))
+deter_crop <- st_crop(deter_3857, st)
+write_sf(deter_crop, "./yearly_deforestation/DETER_cropped.shp", overwrite = TRUE)
 ```
 
-```{r load-prodes}
+```{r plot-AOI, warning=FALSE, fig.show="hold", out.width="50%"}
 prod <- read_sf("./yearly_deforestation/PRODES_cropped.shp")
-# prod <- prod[prod$YEAR < 2019,]
-```
+dete <- read_sf("./yearly_deforestation/DETER_cropped.shp")
 
-```{r plot-AOI, warning=FALSE}
-# whats in it?
-# plot(st)
-plot(prod["YEAR"], axes = TRUE, main = "PRODES Deforestation Data Colored by Year")
+cols <- viridis::magma(6)
+dete$VIEW_DATE <- as.numeric(format(as.Date(dete$VIEW_DATE, format="%d/%m/%Y"),"%Y")) # year as date
+
+plot(prod["YEAR"], pal = cols[2:4], main = "PRODES Deforestation Data Colored by Year")
+plot(dete["VIEW_DATE"], pal = cols, main = "DETER Deforestation Data Colored by Year")
 ```
 
 ## Prepare for Gapfill
@@ -173,13 +180,20 @@ bfast_quarter <- readRDS("bfast_quarter2.rds")
 
 To eliminate errors that may appear in already deforested areas, these arreas are simply excluded, according to PRODES reference data.
 ```{r rasterize-prodes-mask-tiles, warning=FALSE}
-# rasterize PRODES data
+# rasterize reference data
 # 2019 = TRUE, !2019 = FALSE
 ras <- rasterize(prod, as(st[,,,5], "Raster"), "YEAR")
 prodes <- aperm(matrix(ras[], ncol = 140), c(2,1))
 prodes[prodes < 2019] <- FALSE
 prodes[prodes == 2019] <- TRUE
 prodes[is.na(prodes)] <- FALSE
+
+rus <- rasterize(dete, as(st[,,,5], "Raster"), "VIEW_DATE")
+rus[rus < 2019] <- 0
+rus[rus > 2019] <- 0
+rus[is.na(rus[])] <- 0
+rus[rus != 0] <- 1
+deter <- aperm(matrix(rus[], ncol = 140), c(2,1))
 
 # to mask out previous deforestation
 # <2019 = TRUE, !<2019 = FALSE
@@ -188,13 +202,21 @@ prodes_prev[prodes_prev < 2019] <- TRUE
 prodes_prev[prodes_prev == 2019] <- FALSE
 prodes_prev[is.na(prodes_prev)] <- FALSE
 
+# not used, PRODES more conservative
+deter_prev <- aperm(matrix(rasterize(dete, as(st[,,,5], "Raster"), "VIEW_DATE")[], ncol = 140), c(2,1))
+deter_prev[deter_prev < 2019] <- TRUE
+deter_prev[deter_prev >= 2019] <- FALSE
+deter_prev[is.na(deter_prev)] <- FALSE
+
+reference <- deter | prodes
+
 bfast_monthly[prodes_prev == 1] <- FALSE
 bfast_quarter[prodes_prev == 1] <- FALSE
 ```
 
 ```{r aoi-tables}
-table1 <- addmargins(table(bfast_monthly, prodes))
-table2 <- addmargins(table(bfast_quarter, prodes))
+table1 <- addmargins(table(bfast_monthly, reference))
+table2 <- addmargins(table(bfast_quarter, reference))
 
 accuracies <- function(table1) {
   # overall accuracy
@@ -221,14 +243,14 @@ accuracies <- function(table1) {
 ```{r results, fig.show="hold", out.width="50%"}
 Image(bfast_monthly, colbarTitle = "TRUE/FALSE") + ggtitle("Monthly Data") + theme(plot.title = element_text(size=22))
 Image(bfast_quarter, colbarTitle = "TRUE/FALSE") + ggtitle("Quarterly Data") + theme(plot.title = element_text(size=22))
-```
-```{r, out.width="50%", fig.align="center"}
+
 Image(prodes, colbarTitle = "TRUE/FALSE") + ggtitle("PRODES Data") + theme(plot.title = element_text(size=22))
+Image(reference, colbarTitle = "TRUE/FALSE") + ggtitle("PRODES and DETER Data") + theme(plot.title = element_text(size=22))
 ```
 
 ```{r table-results}
-table1
-table2
+addmargins(table(bfast_monthly, reference))
+addmargins(table(bfast_quarter, reference))
 
 array(c(accuracies(table1), accuracies(table2)), dim = c(6,2), dimnames = list(c("Overall Accuracy", "Prod. Acc. FALSE", "Prod. Acc. TRUE", "User's Acc. FALSE", "User's Acc. TRUE", "Kappa"), c("monthly", "quarterly")))
 ```
@@ -271,8 +293,8 @@ bfast_quarter_1 <- readRDS("bfast_quarter_1.rds")
 bfast_quarter_inf[prodes_prev == 1] <- FALSE
 bfast_quarter_1[prodes_prev == 1] <- FALSE
 # create accuracy tables
-table3 <- addmargins(table(bfast_quarter_inf, prodes))
-table4 <- addmargins(table(bfast_quarter_1, prodes))
+table3 <- addmargins(table(bfast_quarter_inf, reference))
+table4 <- addmargins(table(bfast_quarter_1, reference))
 # print
 array(c(accuracies(table4), accuracies(table2), accuracies(table3)), dim = c(6,3), dimnames = list(c("Overall Accuracy", "Prod. Acc. FALSE", "Prod. Acc. TRUE", "User's Acc. FALSE", "User's Acc. TRUE", "Kappa"), c("iMax = 1", "iMax = 5", "iMax = inf")))
 ```
