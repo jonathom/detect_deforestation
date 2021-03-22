@@ -2,9 +2,9 @@
 title: "Deforestation Detection"
 author: "Brian Pondi, Jonathan Bahlmann"
 date: "2/12/2021"
-output: html_document
- #md_document:
-   #variant: markdown_github
+output: 
+ md_document:
+   variant: markdown_github
 ---
 
 ```{r setup, include=FALSE}
@@ -108,21 +108,14 @@ d <- Gapfill(ma_monthly, iMax = 5)
 saveRDS(d, "./monthly_iMax5_140_gapfilled.rds")
 e <- Gapfill(ma_quarter, iMax = 5)
 saveRDS(e, "./quarterly_iMax5_140_gapfilled.rds")
-f <- Gapfill(ma_quarter) # iMax defaults to infinite
-saveRDS(f, "./quarterly_iMaxInf_140_gapfilled.rds")
-g <- Gapfill(ma_quarter, iMax = 1) #
-saveRDS(g, "./quarterly_iMax1_140_gapfilled.rds")
 ```
 
 ### Gapfill Results
-```{r, load-gapfill, fig.show="hold", out.width="33%"}
+```{r, load-gapfill, fig.show="hold", out.width="50%"}
 gf_monthly <- readRDS("monthly_iMax5_140_gapfilled.rds")
 Image(gf_monthly$fill, zlim = c(0.2, 1)) + ggtitle("Gapfilled Monthly Data")
 gf_quarterly <- readRDS("quarterly_iMax5_140_gapfilled.rds")
 Image(gf_quarterly$fill, zlim = c(0.2, 1)) + ggtitle("Gapfilled Quarterly Data")
-gf_quarterly_inf <- readRDS("quarterly_iMaxInf_140_gapfilled.rds")
-Image(gf_quarterly_inf$fill, zlim = c(0.2, 1)) + ggtitle("Gapfilled Quarterly Data with iMax = infinite")
-gf_quarterly_1 <- readRDS("quarterly_iMax1_140_gapfilled.rds")
 ```
 
 ### Gapfill Results - Closeup
@@ -132,10 +125,15 @@ Image(ma_monthly[,,10:12,1], zlim = c(0.2, 1)) + ggtitle("Monthly Input Data, Oc
 Image(ma_quarter[,,4,1], zlim = c(0.2, 1)) + ggtitle("Quarterly Input Data, Last Quarter 2013")
 ```
 
-```{r zoom_gapfill, fig.show="hold", out.width="33%"}
+```{r zoom_gapfill, fig.show="hold", out.width="50%"}
 Image(gf_monthly$fill[,,10:12,1], zlim = c(0.2, 1)) + ggtitle("Monthly Gapfilled Data, Oct - Dec 2013, iMax = 5")
 Image(gf_quarterly$fill[,,4,1], zlim = c(0.2, 1)) + ggtitle("Quarterly Gapfilled Data, Last Quarter 2013, iMax = 5")
-Image(gf_quarterly_inf$fill[,,4,1], zlim = c(0.2, 1)) + ggtitle("Quarterly Gapfilled Data, Last Quarter 2013, iMax = infinite")
+```
+
+Just to see what the Gapfill algorithm is capable of achieving, observe what it yields when letting `iMax` default to inifity. This allows the function to endlessly increase the neighbourhood for predicting `NA` values.
+```{r plot-inf-gf, fig.show="hold", out.width="50%", fig.align="center"}
+gf_quarterly_inf <- readRDS("quarterly_iMaxInf_140_gapfilled.rds")
+Image(gf_quarterly_inf$fill[,,4,1], zlim = c(0.2, 1)) + ggtitle("Quarterly Gapfilled Data, Last Quarter 2013, with iMax=inf")
 ```
 
 ## Calculate BFAST Over AOI
@@ -162,22 +160,15 @@ bfast_on_tile <- function(gapfill_matrix, by, ts, order) {
 
 bfast_monthly2 <- bfast_on_tile(gf_monthly$fill, by = .08333333, ts = 84, order = 2)
 bfast_quarter2 <- bfast_on_tile(gf_quarterly$fill, by = 0.25, ts = 28, order = 2)
-
-bfast_quarter_inf <- bfast_on_tile(gf_quarterly_inf$fill, by = 0.25, ts = 28, order = 2)
-bfast_quarter_1 <- bfast_on_tile(gf_quarterly_1$fill, by = 0.25, ts = 28, order = 2)
 # order = 2 was chosen because order 3 doesn't work on our quarterly aggreggated data
 saveRDS(bfast_monthly2, "bfast_monthly2.rds")
 saveRDS(bfast_quarter2, "bfast_quarter2.rds")
-saveRDS(bfast_quarter_inf, "bfast_quarter_inf.rds")
-saveRDS(bfast_quarter_1, "bfast_quarter_1.rds")
 # warning: too few observations in history period
 ```
 
 ```{r load-bfast-tiles}
 bfast_monthly <- readRDS("bfast_monthly2.rds")
 bfast_quarter <- readRDS("bfast_quarter2.rds")
-bfast_quarter_inf <- readRDS("bfast_quarter_inf.rds")
-bfast_quarter_1 <- readRDS("bfast_quarter_1.rds")
 ```
 
 To eliminate errors that may appear in already deforested areas, these arreas are simply excluded, according to PRODES reference data.
@@ -199,17 +190,11 @@ prodes_prev[is.na(prodes_prev)] <- FALSE
 
 bfast_monthly[prodes_prev == 1] <- FALSE
 bfast_quarter[prodes_prev == 1] <- FALSE
-
-bfast_quarter_inf[prodes_prev == 1] <- FALSE
-bfast_quarter_1[prodes_prev == 1] <- FALSE
 ```
 
 ```{r aoi-tables}
 table1 <- addmargins(table(bfast_monthly, prodes))
 table2 <- addmargins(table(bfast_quarter, prodes))
-
-table3 <- addmargins(table(bfast_quarter_inf, prodes))
-table4 <- addmargins(table(bfast_quarter_1, prodes))
 
 accuracies <- function(table1) {
   # overall accuracy
@@ -234,15 +219,18 @@ accuracies <- function(table1) {
 # Results
 
 ```{r results, fig.show="hold", out.width="50%"}
-Image(bfast_monthly) + ggtitle("Monthly Data") + theme(plot.title = element_text(size=22))
-Image(bfast_quarter) + ggtitle("Quarterly Data") + theme(plot.title = element_text(size=22))
-Image(bfast_quarter_inf) + ggtitle("Quarterly Data") + theme(plot.title = element_text(size=22))
-Image(prodes) + ggtitle("PRODES Data") + theme(plot.title = element_text(size=22))
+Image(bfast_monthly, colbarTitle = "TRUE/FALSE") + ggtitle("Monthly Data") + theme(plot.title = element_text(size=22))
+Image(bfast_quarter, colbarTitle = "TRUE/FALSE") + ggtitle("Quarterly Data") + theme(plot.title = element_text(size=22))
+```
+```{r, out.width="50%", fig.align="center"}
+Image(prodes, colbarTitle = "TRUE/FALSE") + ggtitle("PRODES Data") + theme(plot.title = element_text(size=22))
+```
 
+```{r table-results}
 table1
 table2
 
-array(c(accuracies(table1), accuracies(table2), accuracies(table3), accuracies(table4)), dim = c(6,4), dimnames = list(c("Overall Accuracy", "Prod. Acc. FALSE", "Prod. Acc. TRUE", "User's Acc. FALSE", "User's Acc. TRUE", "Kappa"), c("monthly", "quarterly", "quarter iMax=inf", "quarter iMax=1")))
+array(c(accuracies(table1), accuracies(table2)), dim = c(6,2), dimnames = list(c("Overall Accuracy", "Prod. Acc. FALSE", "Prod. Acc. TRUE", "User's Acc. FALSE", "User's Acc. TRUE", "Kappa"), c("monthly", "quarterly")))
 ```
 
 # Discussion
@@ -255,4 +243,37 @@ Gerber F, Furrer R, Schaepman-Strub G, de Jong R, Schaepman ME (2016) Predicting
 Verbesselt, J., Hyndman, R., Newnham, G., & Culvenor, D. (2010). Detecting trend and seasonal changes in satellite image time series. 
 
 Verbesselt, J., Zeileis, A., & Herold, M. (2013). Near real-time disturbance detection using satellite image time series.
+
+# Appendix
+
+## A) Investigate iMax Parameter
+We investiagted different values for the `iMax` parameter in Gapfill algorithm, and found that results were not significantly different (did neither improve nor impair accuracies), although the calculation using `iMax = infinite`, i.e. completely gapfilled data, resulted in the highest accuracies. The code for this is found here.
+
+Create gapfilled datasets and calculate bfast on tiles.
+``` {r, eval=FALSE}
+f <- Gapfill(ma_quarter) # iMax defaults to infinite
+saveRDS(f, "./quarterly_iMaxInf_140_gapfilled.rds")
+g <- Gapfill(ma_quarter, iMax = 1) #
+saveRDS(g, "./quarterly_iMax1_140_gapfilled.rds")
+
+bfast_quarter_inf <- bfast_on_tile(f$fill, by = 0.25, ts = 28, order = 2)
+bfast_quarter_1 <- bfast_on_tile(g$fill, by = 0.25, ts = 28, order = 2)
+saveRDS(bfast_quarter_inf, "bfast_quarter_inf.rds")
+saveRDS(bfast_quarter_1, "bfast_quarter_1.rds")
+```
+
+Load results, see above for details.
+```{r}
+# load bfast results
+bfast_quarter_inf <- readRDS("bfast_quarter_inf.rds")
+bfast_quarter_1 <- readRDS("bfast_quarter_1.rds")
+# exclude existing deforestation
+bfast_quarter_inf[prodes_prev == 1] <- FALSE
+bfast_quarter_1[prodes_prev == 1] <- FALSE
+# create accuracy tables
+table3 <- addmargins(table(bfast_quarter_inf, prodes))
+table4 <- addmargins(table(bfast_quarter_1, prodes))
+# print
+array(c(accuracies(table4), accuracies(table2), accuracies(table3)), dim = c(6,3), dimnames = list(c("Overall Accuracy", "Prod. Acc. FALSE", "Prod. Acc. TRUE", "User's Acc. FALSE", "User's Acc. TRUE", "Kappa"), c("iMax = 1", "iMax = 5", "iMax = inf")))
+```
 
