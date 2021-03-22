@@ -84,6 +84,8 @@ Input Data and Preparations
 -   Package description
 -   PRODES data sorted by years can be found here: [PRODES yearly
     deforestation](http://terrabrasilis.dpi.inpe.br/download/dataset/legal-amz-prodes/vector/yearly_deforestation.zip)
+-   DETER data
+    [DETER](http://terrabrasilis.dpi.inpe.br/file-delivery/download/deter-amz/shape)
 
 As seen in “final.Rmd”. The subdirectory `L8cube_subregion` contains a
 NDVI time series as single `.tif` files, a file per acquisition, as
@@ -95,6 +97,7 @@ library(gapfill)
 library(bfast)
 library(zoo)
 library(raster)
+library(viridis)
 subdir = "landsat_monthly"
 f = paste0(subdir, "/", list.files(subdir))
 st = merge(read_stars(f)) # make stars object
@@ -113,20 +116,25 @@ prod <- read_sf("./yearly_deforestation/yearly_deforestation.shp")
 prod_3857 <- st_make_valid(st_transform(prod, crs = st_crs(st)))
 prod_crop <- st_crop(prod_3857, st) # clip
 write_sf(prod_crop, "./yearly_deforestation/PRODES_cropped.shp", overwrite = TRUE)
+
+deter <- read_sf("./yearly_deforestation/deter_public.shp")
+deter_3857 <- st_make_valid(st_transform(deter, crs = st_crs(st)))
+deter_crop <- st_crop(deter_3857, st)
+write_sf(deter_crop, "./yearly_deforestation/DETER_cropped.shp", overwrite = TRUE)
 ```
 
 ``` r
 prod <- read_sf("./yearly_deforestation/PRODES_cropped.shp")
-# prod <- prod[prod$YEAR < 2019,]
+dete <- read_sf("./yearly_deforestation/DETER_cropped.shp")
+
+cols <- viridis::magma(6)
+dete$VIEW_DATE <- as.numeric(format(as.Date(dete$VIEW_DATE, format="%d/%m/%Y"),"%Y")) # year as date
+
+plot(prod["YEAR"], pal = cols[2:4], main = "PRODES Deforestation Data Colored by Year")
+plot(dete["VIEW_DATE"], pal = cols, main = "DETER Deforestation Data Colored by Year")
 ```
 
-``` r
-# whats in it?
-# plot(st)
-plot(prod["YEAR"], axes = TRUE, main = "PRODES Deforestation Data Colored by Year")
-```
-
-![](main_files/figure-markdown_github/plot-AOI-1.png)
+<img src="main_files/figure-markdown_github/plot-AOI-1.png" width="50%" /><img src="main_files/figure-markdown_github/plot-AOI-2.png" width="50%" />
 
 Prepare for Gapfill
 -------------------
@@ -168,8 +176,6 @@ d <- Gapfill(ma_monthly, iMax = 5)
 saveRDS(d, "./monthly_iMax5_140_gapfilled.rds")
 e <- Gapfill(ma_quarter, iMax = 5)
 saveRDS(e, "./quarterly_iMax5_140_gapfilled.rds")
-f <- Gapfill(ma_quarter) # iMax defaults to infinite
-saveRDS(f, "./quarterly_iMaxInf_140_gapfilled.rds")
 ```
 
 ### Gapfill Results
@@ -179,11 +185,9 @@ gf_monthly <- readRDS("monthly_iMax5_140_gapfilled.rds")
 Image(gf_monthly$fill, zlim = c(0.2, 1)) + ggtitle("Gapfilled Monthly Data")
 gf_quarterly <- readRDS("quarterly_iMax5_140_gapfilled.rds")
 Image(gf_quarterly$fill, zlim = c(0.2, 1)) + ggtitle("Gapfilled Quarterly Data")
-gf_quarterly_inf <- readRDS("quarterly_iMaxInf_140_gapfilled.rds")
-Image(gf_quarterly_inf$fill, zlim = c(0.2, 1)) + ggtitle("Gapfilled Quarterly Data with iMax = infinite")
 ```
 
-<img src="main_files/figure-markdown_github/load-gapfill-1.png" width="33%" /><img src="main_files/figure-markdown_github/load-gapfill-2.png" width="33%" /><img src="main_files/figure-markdown_github/load-gapfill-3.png" width="33%" />
+<img src="main_files/figure-markdown_github/load-gapfill-1.png" width="50%" /><img src="main_files/figure-markdown_github/load-gapfill-2.png" width="50%" />
 
 ### Gapfill Results - Closeup
 
@@ -200,10 +204,21 @@ Image(ma_quarter[,,4,1], zlim = c(0.2, 1)) + ggtitle("Quarterly Input Data, Last
 ``` r
 Image(gf_monthly$fill[,,10:12,1], zlim = c(0.2, 1)) + ggtitle("Monthly Gapfilled Data, Oct - Dec 2013, iMax = 5")
 Image(gf_quarterly$fill[,,4,1], zlim = c(0.2, 1)) + ggtitle("Quarterly Gapfilled Data, Last Quarter 2013, iMax = 5")
-Image(gf_quarterly_inf$fill[,,4,1], zlim = c(0.2, 1)) + ggtitle("Quarterly Gapfilled Data, Last Quarter 2013, iMax = infinite")
 ```
 
-<img src="main_files/figure-markdown_github/zoom_gapfill-1.png" width="33%" /><img src="main_files/figure-markdown_github/zoom_gapfill-2.png" width="33%" /><img src="main_files/figure-markdown_github/zoom_gapfill-3.png" width="33%" />
+<img src="main_files/figure-markdown_github/zoom_gapfill-1.png" width="50%" /><img src="main_files/figure-markdown_github/zoom_gapfill-2.png" width="50%" />
+
+Just to see what the Gapfill algorithm is capable of achieving, observe
+what it yields when letting `iMax` default to inifity. This allows the
+function to endlessly increase the neighbourhood for predicting `NA`
+values.
+
+``` r
+gf_quarterly_inf <- readRDS("quarterly_iMaxInf_140_gapfilled.rds")
+Image(gf_quarterly_inf$fill[,,4,1], zlim = c(0.2, 1)) + ggtitle("Quarterly Gapfilled Data, Last Quarter 2013, with iMax=inf")
+```
+
+<img src="main_files/figure-markdown_github/plot-inf-gf-1.png" width="50%" style="display: block; margin: auto;" />
 
 Calculate BFAST Over AOI
 ------------------------
@@ -228,7 +243,6 @@ bfast_on_tile <- function(gapfill_matrix, by, ts, order) {
   return(result)
 }
 
-bfast_monthly3 <- bfast_on_tile(gf_monthly$fill, by = .08333333, ts = 84, order = 3)
 bfast_monthly2 <- bfast_on_tile(gf_monthly$fill, by = .08333333, ts = 84, order = 2)
 bfast_quarter2 <- bfast_on_tile(gf_quarterly$fill, by = 0.25, ts = 28, order = 2)
 # order = 2 was chosen because order 3 doesn't work on our quarterly aggreggated data
@@ -246,13 +260,20 @@ To eliminate errors that may appear in already deforested areas, these
 arreas are simply excluded, according to PRODES reference data.
 
 ``` r
-# rasterize PRODES data
+# rasterize reference data
 # 2019 = TRUE, !2019 = FALSE
 ras <- rasterize(prod, as(st[,,,5], "Raster"), "YEAR")
 prodes <- aperm(matrix(ras[], ncol = 140), c(2,1))
 prodes[prodes < 2019] <- FALSE
 prodes[prodes == 2019] <- TRUE
 prodes[is.na(prodes)] <- FALSE
+
+rus <- rasterize(dete, as(st[,,,5], "Raster"), "VIEW_DATE")
+rus[rus < 2019] <- 0
+rus[rus > 2019] <- 0
+rus[is.na(rus[])] <- 0
+rus[rus != 0] <- 1
+deter <- aperm(matrix(rus[], ncol = 140), c(2,1))
 
 # to mask out previous deforestation
 # <2019 = TRUE, !<2019 = FALSE
@@ -261,14 +282,21 @@ prodes_prev[prodes_prev < 2019] <- TRUE
 prodes_prev[prodes_prev == 2019] <- FALSE
 prodes_prev[is.na(prodes_prev)] <- FALSE
 
-bfast_monthly[prodes_prev == 1] <- FALSE
+# not used, PRODES more conservative
+deter_prev <- aperm(matrix(rasterize(dete, as(st[,,,5], "Raster"), "VIEW_DATE")[], ncol = 140), c(2,1))
+deter_prev[deter_prev < 2019] <- TRUE
+deter_prev[deter_prev >= 2019] <- FALSE
+deter_prev[is.na(deter_prev)] <- FALSE
 
+reference <- deter | prodes
+
+bfast_monthly[prodes_prev == 1] <- FALSE
 bfast_quarter[prodes_prev == 1] <- FALSE
 ```
 
 ``` r
-table1 <- addmargins(table(bfast_monthly, prodes))
-table2 <- addmargins(table(bfast_quarter, prodes))
+table1 <- addmargins(table(bfast_monthly, reference))
+table2 <- addmargins(table(bfast_quarter, reference))
 
 accuracies <- function(table1) {
   # overall accuracy
@@ -294,42 +322,46 @@ Results
 =======
 
 ``` r
-Image(bfast_monthly) + ggtitle("Monthly Data") + theme(plot.title = element_text(size=22))
-Image(bfast_quarter) + ggtitle("Quarterly Data") + theme(plot.title = element_text(size=22))
-Image(prodes) + ggtitle("PRODES Data") + theme(plot.title = element_text(size=22))
+Image(bfast_monthly, colbarTitle = "TRUE/FALSE") + ggtitle("Monthly Data") + theme(plot.title = element_text(size=22))
+Image(bfast_quarter, colbarTitle = "TRUE/FALSE") + ggtitle("Quarterly Data") + theme(plot.title = element_text(size=22))
 
-table1
+Image(prodes, colbarTitle = "TRUE/FALSE") + ggtitle("PRODES Data") + theme(plot.title = element_text(size=22))
+Image(reference, colbarTitle = "TRUE/FALSE") + ggtitle("PRODES and DETER Data") + theme(plot.title = element_text(size=22))
 ```
 
-    ##              prodes
-    ## bfast_monthly     0     1   Sum
-    ##         FALSE 15905   170 16075
-    ##         TRUE   1428  2097  3525
-    ##         Sum   17333  2267 19600
+<img src="main_files/figure-markdown_github/results-1.png" width="50%" /><img src="main_files/figure-markdown_github/results-2.png" width="50%" /><img src="main_files/figure-markdown_github/results-3.png" width="50%" /><img src="main_files/figure-markdown_github/results-4.png" width="50%" />
 
 ``` r
-table2
+addmargins(table(bfast_monthly, reference))
 ```
 
-    ##              prodes
-    ## bfast_quarter     0     1   Sum
-    ##         FALSE 15720   374 16094
-    ##         TRUE   1613  1893  3506
-    ##         Sum   17333  2267 19600
+    ##              reference
+    ## bfast_monthly FALSE  TRUE   Sum
+    ##         FALSE 15608   467 16075
+    ##         TRUE    929  2596  3525
+    ##         Sum   16537  3063 19600
+
+``` r
+addmargins(table(bfast_quarter, reference))
+```
+
+    ##              reference
+    ## bfast_quarter FALSE  TRUE   Sum
+    ##         FALSE 15368   726 16094
+    ##         TRUE   1169  2337  3506
+    ##         Sum   16537  3063 19600
 
 ``` r
 array(c(accuracies(table1), accuracies(table2)), dim = c(6,2), dimnames = list(c("Overall Accuracy", "Prod. Acc. FALSE", "Prod. Acc. TRUE", "User's Acc. FALSE", "User's Acc. TRUE", "Kappa"), c("monthly", "quarterly")))
 ```
 
-    ##                   monthly   quarterly
-    ## Overall Accuracy  91.84694  89.86224 
-    ## Prod. Acc. FALSE  91.76138  90.69405 
-    ## Prod. Acc. TRUE   92.5011   83.50243 
-    ## User's Acc. FALSE 98.94246  97.67615 
-    ## User's Acc. TRUE  59.48936  53.99315 
-    ## Kappa             0.6788956 0.5995541
-
-<img src="main_files/figure-markdown_github/results-1.png" width="33%" /><img src="main_files/figure-markdown_github/results-2.png" width="33%" /><img src="main_files/figure-markdown_github/results-3.png" width="33%" />
+    ##                   monthly  quarterly
+    ## Overall Accuracy  92.87755 90.33163 
+    ## Prod. Acc. FALSE  94.38229 92.931   
+    ## Prod. Acc. TRUE   84.75351 76.29775 
+    ## User's Acc. FALSE 97.09487 95.489   
+    ## User's Acc. TRUE  73.64539 66.65716 
+    ## Kappa             0.745546 0.6537672
 
 Discussion
 ==========
@@ -382,3 +414,53 @@ Detecting trend and seasonal changes in satellite image time series.
 
 Verbesselt, J., Zeileis, A., & Herold, M. (2013). Near real-time
 disturbance detection using satellite image time series.
+
+Appendix
+========
+
+A) Investigate iMax Parameter
+-----------------------------
+
+We investiagted different values for the `iMax` parameter in Gapfill
+algorithm, and found that results were not significantly different (did
+neither improve nor impair accuracies), although the calculation using
+`iMax = infinite`, i.e. completely gapfilled data, resulted in the
+highest accuracies. The code for this is found here.
+
+Create gapfilled datasets and calculate bfast on tiles.
+
+``` r
+f <- Gapfill(ma_quarter) # iMax defaults to infinite
+saveRDS(f, "./quarterly_iMaxInf_140_gapfilled.rds")
+g <- Gapfill(ma_quarter, iMax = 1) #
+saveRDS(g, "./quarterly_iMax1_140_gapfilled.rds")
+
+bfast_quarter_inf <- bfast_on_tile(f$fill, by = 0.25, ts = 28, order = 2)
+bfast_quarter_1 <- bfast_on_tile(g$fill, by = 0.25, ts = 28, order = 2)
+saveRDS(bfast_quarter_inf, "bfast_quarter_inf.rds")
+saveRDS(bfast_quarter_1, "bfast_quarter_1.rds")
+```
+
+Load results, see above for details.
+
+``` r
+# load bfast results
+bfast_quarter_inf <- readRDS("bfast_quarter_inf.rds")
+bfast_quarter_1 <- readRDS("bfast_quarter_1.rds")
+# exclude existing deforestation
+bfast_quarter_inf[prodes_prev == 1] <- FALSE
+bfast_quarter_1[prodes_prev == 1] <- FALSE
+# create accuracy tables
+table3 <- addmargins(table(bfast_quarter_inf, reference))
+table4 <- addmargins(table(bfast_quarter_1, reference))
+# print
+array(c(accuracies(table4), accuracies(table2), accuracies(table3)), dim = c(6,3), dimnames = list(c("Overall Accuracy", "Prod. Acc. FALSE", "Prod. Acc. TRUE", "User's Acc. FALSE", "User's Acc. TRUE", "Kappa"), c("iMax = 1", "iMax = 5", "iMax = inf")))
+```
+
+    ##                   iMax = 1  iMax = 5  iMax = inf
+    ## Overall Accuracy  90.31122  90.33163  90.45918  
+    ## Prod. Acc. FALSE  92.91286  92.931    93.08823  
+    ## Prod. Acc. TRUE   76.2651   76.29775  76.2651   
+    ## User's Acc. FALSE 95.48223  95.489    95.49035  
+    ## User's Acc. TRUE  66.59065  66.65716  67.14573  
+    ## Kappa             0.6531235 0.6537672 0.6571723
