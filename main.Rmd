@@ -2,9 +2,9 @@
 title: "Deforestation Detection"
 author: "Brian Pondi, Jonathan Bahlmann"
 date: "2/12/2021"
-output: html_output 
- #md_document:
-   #variant: markdown_github
+output: 
+ md_document:
+   variant: markdown_github
 ---
 
 ```{r setup, include=FALSE}
