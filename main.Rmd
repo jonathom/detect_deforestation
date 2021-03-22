@@ -219,8 +219,8 @@ deter_prev[is.na(deter_prev)] <- FALSE
 
 reference <- deter | prodes
 
-bfast_monthly[prodes_prev == 1] <- FALSE
-bfast_quarter[prodes_prev == 1] <- FALSE
+bfast_monthly[prodes_prev == 1] <- NA
+bfast_quarter[prodes_prev == 1] <- NA
 ```
 
 ```{r aoi-tables}
