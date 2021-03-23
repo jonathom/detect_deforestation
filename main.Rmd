@@ -17,11 +17,9 @@ Because most computations are taking some time, they have been precomputed and u
 
 # Introduction
 
-Forests are known to be crucial part of the ecosystem as they purify water and air. They are key in mitigating climate changes as they act as a carbon sink and apart from that there are varieties of land-based species that live in the forest (`TODO: source?`). Forests in the tropical are under threat due to deforestation. Deforestation in this context refers to (UNFCCC 2001) definition which is the direct human-induced conversion of forested land to do non-forested land.
+Forests are known to be crucial part of the ecosystem as they purify water and air. They are key in mitigating climate changes as they act as a carbon sink and apart from that there are varieties of land-based species that live in the forest (Pacheco et al., 2021). Forests in the tropical are under threat due to deforestation. Deforestation in this context refers to (UNFCCC 2001) definition which is the direct human-induced conversion of forested land to do non-forested land.
 
 In this research we focused on the Amazonia of Brazil because deforestation that occurs in that region leads to loss of environmental services that, while affecting Brazil the most, affect the whole world (Fearnside, 1997a, 2008a). Environmental services of Amazonian forest here include its roles in storing carbon, which avoids global warming (Fearnside, 2000, 2016a; Nogueira et al., 2015), recycling of water in also non-Amazonian areas (Arraut et al., 2012), and in maintenance of biodiversity (Fearnside, 1999). 
-
-(`I think this sentence is not needed`) Additionally, Amazonian forests provide a variety of material products, like rubber and Brazil nuts; which currently support local populations and are also lost as opportunities for sustainable use when areas are deforested. 
 
 Carrying out near real-time monitoring of deforestation can help to curb deforestation. Satellite sensors are greatly capable for this task because they provide repeatable measurements that are consistent in both spatial and temporal scale. This capability enables capturing of many processes that can cause change, including natural cases like fires and anthropogenic disturbances such as deforestation (Jin and Sader, 2005).
 
@@ -341,7 +339,7 @@ Fearnside, P.M. 1997a. Environmental services as a strategy for sustainable deve
 
 Fearnside, P.M. 1999. Biodiversity as an environmental service in Brazil's Amazonianforests: Risks, value and conservation. Environmental Conservation 26(4):305-21.
 
-Fearnside, P.M. 2000. Global warming and tropical land-use change: Greenhouse gas emissions from biomass burning, decomposition and soils in forest conversion, shifting cultivation and secondary vegetation. Climatic Change 46(1-2):115-158
+Fearnside, P.M. 2000. Global warming and tropical land-use change: Greenhouse gas emissions from biomass burning, decomposition and soils in forest  conversion, shifting cultivation and secondary vegetation. Climatic Change  46(1-2):115-158
 
 Fearnside, P.M. 2008a. Amazon forest maintenance as a source of environmental services. Anais da Academia Brasileira de Ciências 80(1):101-114.
 
@@ -351,6 +349,8 @@ Jin, S. M., Sader, S. A., 2005. MODIS time-series imagery for forest disturbance
 
 Nogueira, E.M., A.M. Yanai, F.O.R. Fonseca, and P.M. Fearnside. 2015. Carbon stock loss from deforestation through 2013 in Brazilian Amazonia. Global Change 
 Biology 21:1271–1292.
+
+Pacheco, P., Mo, K., Dudley, N., Shapiro, A., Aguilar-Amuchastegui, N., Ling, P.Y., Anderson, C. and Marx, A. 2021. Deforestation fronts: Drivers and responses in a changing world. WWF, Gland, Switzerland. 
 
 UNFCCC 2001 Seventh Conf. of Parties: The Marrakech Accords (Bonn: UNFCCC Secretariat) available at https://unfccc.int/
 
