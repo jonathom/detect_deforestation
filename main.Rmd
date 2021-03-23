@@ -2,7 +2,7 @@
 title: "Near Real-Time Monitoring of Deforestation using Optical Remote Sensing Data"
 author: "Brian Pondi, Jonathan Bahlmann - Institute for Geoinformatics, Münster"
 date: "24/03/2021"
-output: 
+output:
  md_document:
   variant: markdown_github
 ---
@@ -11,9 +11,11 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+# Near Real-Time Monitoring of Deforestation using Optical Remote Sensing Data
+
 # Prerequisites
 
-Because most computations are taking some time, they have been precomputed and uploaded to this repository. Input imagery however is not available via this repository. `TODO but with disabling ... this can be run`
+Because most computations are taking some time, a lot of them have been precomputed and uploaded to this repository. Input imagery however is not available via this repository due to size. To build the markdown, input landsat time series must be downloaded [from sciebo](https://uni-muenster.sciebo.de/s/d9BKPd1sVtFqvW4) and extracted into the repository folder. Alongside with the toplevel files like `main.Rmd`, that folder should then contain `landsat_monthly` and `landsat_quarterly`. If there is a problem with the input data, please contact us.
 
 # Introduction
 
@@ -55,6 +57,10 @@ library(bfast)
 library(zoo)
 library(raster)
 library(viridis)
+```
+
+```{r st-flag-1, load-data, message=FALSE, warning=FALSE, fig.show="hold", out.width="50%"}
+
 subdir = "landsat_monthly"
 f = paste0(subdir, "/", list.files(subdir))
 st = merge(read_stars(f)) # make stars object
@@ -66,7 +72,7 @@ plot(st_q)
 ```
 
 The reference PRODES and DETER data were then loaded and cropped. 
-```{r crop-prodes, eval=FALSE}
+```{r st-flag-2, crop-prodes, eval=FALSE}
 # load PRODES data
 prod <- read_sf("./yearly_deforestation/yearly_deforestation.shp")
 prod_3857 <- st_make_valid(st_transform(prod, crs = st_crs(st)))
@@ -94,14 +100,14 @@ plot(dete["VIEW_DATE"], pal = cols, main = "DETER Deforestation Data Colored by 
 
 ## Gapfill
 
-Prediction of missing values in satellite data are carried out using the `gapfill` package in R. The gapfill approach was designed to carry out predictions on satellite data that were recorded at equally spaced points of time. Based on Gerber et. al 2016, they applied the algorithm to MODIS NDVI data with cloud cover scenarios of up to 50% missing data. The method was further compared to Gapfill-Python and TIMESAT and it provided the most accurate prediction in terms of RMSE.
+Prediction of missing values in satellite data are carried out using the `gapfill` package in R. The gapfill approach was designed to carry out predictions on satellite data that were recorded at equally spaced points of time. Based on Gerber et. al 2016, they applied the algorithm to MODIS NDVI data with cloud cover scenarios of up to 50% missing data.
 
-Gapfill was appealing to this research because it's capable of handling large amounts of spatio-temporal data, it’s user friendly and tailored to specific features of satellite imagery. The predictions of the missing values are based on a subset-predict procedure, i.e. each missing value is predicted separately by (1) selecting subsets of the data that are in a neighborhood around the missing point and (2) predicting the missing value based on the subset (Gerber et. al, 2016).
+Gapfill was appealing to this research because it's capable of handling large amounts of spatio-temporal data, it’s user friendly and tailored to specific features of satellite imagery. The predictions of the missing values are based on a subset-predict procedure, i.e. each missing value is predicted separately by (1) selecting subsets of the data that are in a neighborhood around the missing point in space and time and (2) predicting the missing value based on the subset (Gerber et. al, 2016). If a selected subset doesn't fullfil the requirements (enough non-empty images and non-missing values), the neighbourhood is simply increased. If a suitable subset is found, a linear quantile regression is used to interpolate the missing value. The temporal neighbourhood is also used to adjust for seasonality (Gerber et. al, 2016).
 
 ### Prepare for Gapfill
 
-`Gapfill` documentation tells us that as input, a 4-dimensional numeric array is needed, with dimensions x, y, seasonal index (doy) and year. These arrays are created as follows.
-```{r create-gapfill-input}
+`Gapfill` documentation tells us that as input, a 4-dimensional numeric array is needed, with dimensions x, y, seasonal index (doy) and year. These arrays are extracted as numeric vector from the input `stars` data and then put into an array of the requested dimensions. An x-y-axis flip is needed to be able to use the function `Image`, that can render the multidimensional arrays, saving time and effort to convert the arrays back to `stars` objects.
+```{r st-flag-3, create-gapfill-input}
 prep_gapfill <- function(st, doy, ts) {
  # st is stars object, doy is day of year vector, ts is number of timesteps per year
  
@@ -127,7 +133,7 @@ ma_monthly <- prep_gapfill(st, doy_12, 12)
 ma_quarter <- prep_gapfill(st_q, doy_4, 4)
 ```
 
-In this research we also explored to tailor gapfill by customizing the `iMax` parameter. It gives the maximum number of iterations of the subset-predict procedure until `NA` is returned as predicted value (Gerber, 2016). As it is defaulting to `Inf`, `Gapfill` can take hours upon hours of computation. This is why we settled on using `iMax = 5`. A comparison of the (neglegtible) effect of different `iMax` values can be found in Appendix A).
+In this research we also explored to tailor gapfill by customizing the `iMax` parameter. It gives the maximum number of iterations of the subset-predict procedure until `NA` is returned as predicted value (Gerber, 2016). As it is defaulting to `Inf`, `Gapfill` can take hours upon hours of computation. This is why we settled on using `iMax = 5`. A comparison of the (negligible) effect of different `iMax` values can be found in Appendix A).
 ```{r do-gapfill, warning=FALSE, eval=FALSE}
 d <- Gapfill(ma_monthly, iMax = 5)
 saveRDS(d, "./monthly_iMax5_140_gapfilled.rds")
@@ -157,20 +163,22 @@ Image(gf_monthly$fill[,,10:12,1], zlim = c(0.2, 1), colbarTitle = "NDVI") + ggti
 Image(gf_quarterly$fill[,,4,1], zlim = c(0.2, 1), colbarTitle = "NDVI") + ggtitle("Quarterly Gapfilled Data, Last Quarter 2013, iMax = 5")
 ```
 
-Just to see what the Gapfill algorithm is capable of achieving, observe what it yields when letting `iMax` default to inifity. This allows the function to endlessly increase the neighbourhood for predicting `NA` values, resulting in an image with no cloud gaps whatsoever.
-```{r plot-inf-gf, fig.show="hold", out.width="50%", fig.align="right"}
+Just to see what the Gapfill algorithm is capable of achieving, observe what it yields when letting `iMax` default to inifity. This allows the function to endlessly increase the neighbourhood for predicting `NA` values, resulting in an image with no cloud gaps whatsoever (as long as some input pixels are given, gapfill can not fill empty images).
+```{r plot-inf-gf, fig.show="hold", out.width="50%", fig.align="center"}
 gf_quarterly_inf <- readRDS("./appendix/quarterly_iMaxInf_140_gapfilled.rds")
-Image(gf_quarterly_inf$fill[,,4,1], zlim = c(0.2, 1), colbarTitle = "NDVI") + ggtitle("Quarterly Gapfilled Data, Last Quarter 2013, with iMax=inf")
+Image(gf_quarterly_inf$fill[,,4,1], zlim = c(0.2, 1), colbarTitle = "NDVI") + ggtitle("Quarterly Gapfilled Data, Last Quarter 2013, with iMax=inf") # plotting quarterly gapfilled data with iMax=Inf
 ```
 
 ## BFAST
 
 Near-real time monitoring of deforestation being the main object of this study, we looked into a generic change detection approach for time series by detecting and characterizing Breaks For Additive Seasonal and Trend (BFAST). (Verbesselt et al., 2010) first applied BFAST in forested areas of South Eastern Australia and it was able to detect and characterize spatial and temporal changes in a forested landscape. BFAST package is now publicly available on CRAN. Besides BFAST there exists a function component named `bfastmonitor`, which is capable of carrying out near real-time disturbance detection in satellite image time series even if the data is not gap-filled (Verbesselt et al., 2013).
 
-BFASTmonitor proves to be useful because gap-filling algorithm was not able to completely predict all the missing values in the time series data used in this study as some had some satellite images that had 100% cloud cover. The algorithm was used in both monthly and quarterly time series data.
+`bfastmonitor` proves to be useful because gap-filling algorithm was not able to completely predict all the missing values in the time series data used in this study as some had some satellite images that had 100% cloud cover, and bfast is able to handle gaps in the data. In `bfastmonitor`, the data is split into a history and a monitoring period. The "piecewise linear trend and seasonal model" (Verbesselt et. al, 2010) used in bfast is then fitted to the part of the history that is considered stable. A monitoring procesdure then checks the monitoring timesteps for breaks. The algorithm was used in both monthly and quarterly time series data.
+
+### `bfastmonitor` Example
 
 Let's have a look at what `bfastmonitor` does by plotting two example time series. We select a border area of an area that is deforested (subset of time series in first plot). Then we let `bfastmonitor` run on two example pixels (top-left and bottom-right corner). As expected, a break is detected in the latter time series.
-```{r, fig.show="hold", out.width="50%", warning=FALSE}
+```{r st-flag-4, fig.show="hold", out.width="50%", warning=FALSE}
 ext <- extent(-7337562,-7337134,-1020218,-1019648) # extent drawn on raster and then recreated here
 plot(st_geometry(prod), main = "Overview of Example Time Series") # plot prodes shape
 plot(as(st[,,,80], "Raster"), add = TRUE, ext = ext) # add clipped raster
@@ -190,6 +198,8 @@ y <- as.ts(zoo(x, seq(2013, by = .08333333, length.out = 84))) # as ts object
 bf <- bfastmonitor(y, start = 2019) # bfmonitor
 plot(bf) # plot
 ```
+
+### `bfastmonitor` on Complete Tile
 
 The above demonstrated `bfastmonitor` is then run on all pixels of the aoi. This is done by the function `bfast_on_tile`, defined in the following code block. It returns a matrix that is `TRUE` for all pixels for which a breakpoint is detected and `FALSE` for all where no break is found.
 ```{r bfast-aoi, warning=FALSE}
@@ -231,7 +241,7 @@ bfast_quarter <- readRDS("bfast_quarter2.rds")
 ```
 
 To eliminate errors that may appear due to previously deforested areas (< 2019), these areas are simply excluded, according to PRODES reference data. This is done only for PRODES data and not also for DETER polygons to ensure that only pixels that were actually deforested are taken out, as the goal of this research is to investigate whether (Gapfil and) BFAST is able to detect deforestation. This task includes being robust to other forest disturbances.
-```{r exclude-previous-deforestation, warning=FALSE}
+```{r st-flag-5, exclude-previous-deforestation, warning=FALSE}
 # to mask out previous deforestation
 # <2019 = TRUE, !<2019 = FALSE
 ras <- rasterize(prod, as(st[,,,5], "Raster"), "YEAR")

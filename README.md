@@ -1,10 +1,18 @@
+Near Real-Time Monitoring of Deforestation using Optical Remote Sensing Data
+============================================================================
+
 Prerequisites
 =============
 
-Because most computations are taking some time, they have been
+Because most computations are taking some time, a lot of them have been
 precomputed and uploaded to this repository. Input imagery however is
-not available via this repository.
-`TODO but with disabling ... this can be run`
+not available via this repository due to size. To build the markdown,
+input landsat time series must be downloaded [from
+sciebo](https://uni-muenster.sciebo.de/s/d9BKPd1sVtFqvW4) and extracted
+into the repository folder. Alongside with the toplevel files like
+`main.Rmd`, that folder should then contain `landsat_monthly` and
+`landsat_quarterly`. If there is a problem with the input data, please
+contact us.
 
 Introduction
 ============
@@ -12,7 +20,7 @@ Introduction
 Forests are known to be crucial part of the ecosystem as they purify
 water and air. They are key in mitigating climate changes as they act as
 a carbon sink and apart from that there are varieties of land-based
-species that live in the forest (`TODO: source?`). Forests in the
+species that live in the forest (Pacheco et al., 2021). Forests in the
 tropical are under threat due to deforestation. Deforestation in this
 context refers to (UNFCCC 2001) definition which is the direct
 human-induced conversion of forested land to do non-forested land.
@@ -25,11 +33,6 @@ here include its roles in storing carbon, which avoids global warming
 (Fearnside, 2000, 2016a; Nogueira et al., 2015), recycling of water in
 also non-Amazonian areas (Arraut et al., 2012), and in maintenance of
 biodiversity (Fearnside, 1999).
-
-(`I think this sentence is not needed`) Additionally, Amazonian forests
-provide a variety of material products, like rubber and Brazil nuts;
-which currently support local populations and are also lost as
-opportunities for sustainable use when areas are deforested.
 
 Carrying out near real-time monitoring of deforestation can help to curb
 deforestation. Satellite sensors are greatly capable for this task
@@ -95,6 +98,9 @@ library(bfast)
 library(zoo)
 library(raster)
 library(viridis)
+```
+
+``` r
 subdir = "landsat_monthly"
 f = paste0(subdir, "/", list.files(subdir))
 st = merge(read_stars(f)) # make stars object
@@ -105,7 +111,7 @@ st_q = merge(read_stars(f)) # make stars object
 plot(st_q)
 ```
 
-<img src="main_files/figure-markdown_github/load-data-1.png" width="50%" /><img src="main_files/figure-markdown_github/load-data-2.png" width="50%" />
+<img src="main_files/figure-markdown_github/st-flag-1, load-data-1.png" width="50%" /><img src="main_files/figure-markdown_github/st-flag-1, load-data-2.png" width="50%" />
 
 The reference PRODES and DETER data were then loaded and cropped.
 
@@ -150,22 +156,30 @@ Prediction of missing values in satellite data are carried out using the
 predictions on satellite data that were recorded at equally spaced
 points of time. Based on Gerber et. al 2016, they applied the algorithm
 to MODIS NDVI data with cloud cover scenarios of up to 50% missing data.
-The method was further compared to Gapfill-Python and TIMESAT and it
-provided the most accurate prediction in terms of RMSE.
 
 Gapfill was appealing to this research because it’s capable of handling
 large amounts of spatio-temporal data, it’s user friendly and tailored
 to specific features of satellite imagery. The predictions of the
 missing values are based on a subset-predict procedure, i.e. each
 missing value is predicted separately by (1) selecting subsets of the
-data that are in a neighborhood around the missing point and (2)
-predicting the missing value based on the subset (Gerber et. al, 2016).
+data that are in a neighborhood around the missing point in space and
+time and (2) predicting the missing value based on the subset (Gerber
+et. al, 2016). If a selected subset doesn’t fullfil the requirements
+(enough non-empty images and non-missing values), the neighbourhood is
+simply increased. If a suitable subset is found, a linear quantile
+regression is used to interpolate the missing value. The temporal
+neighbourhood is also used to adjust for seasonality (Gerber et. al,
+2016).
 
 ### Prepare for Gapfill
 
 `Gapfill` documentation tells us that as input, a 4-dimensional numeric
 array is needed, with dimensions x, y, seasonal index (doy) and year.
-These arrays are created as follows.
+These arrays are extracted as numeric vector from the input `stars` data
+and then put into an array of the requested dimensions. An x-y-axis flip
+is needed to be able to use the function `Image`, that can render the
+multidimensional arrays, saving time and effort to convert the arrays
+back to `stars` objects.
 
 ``` r
 prep_gapfill <- function(st, doy, ts) {
@@ -198,7 +212,7 @@ In this research we also explored to tailor gapfill by customizing the
 subset-predict procedure until `NA` is returned as predicted value
 (Gerber, 2016). As it is defaulting to `Inf`, `Gapfill` can take hours
 upon hours of computation. This is why we settled on using `iMax = 5`. A
-comparison of the (neglegtible) effect of different `iMax` values can be
+comparison of the (negligible) effect of different `iMax` values can be
 found in Appendix A).
 
 ``` r
@@ -246,14 +260,15 @@ Image(gf_quarterly$fill[,,4,1], zlim = c(0.2, 1), colbarTitle = "NDVI") + ggtitl
 Just to see what the Gapfill algorithm is capable of achieving, observe
 what it yields when letting `iMax` default to inifity. This allows the
 function to endlessly increase the neighbourhood for predicting `NA`
-values, resulting in an image with no cloud gaps whatsoever.
+values, resulting in an image with no cloud gaps whatsoever (as long as
+some input pixels are given, gapfill can not fill empty images).
 
 ``` r
 gf_quarterly_inf <- readRDS("./appendix/quarterly_iMaxInf_140_gapfilled.rds")
-Image(gf_quarterly_inf$fill[,,4,1], zlim = c(0.2, 1), colbarTitle = "NDVI") + ggtitle("Quarterly Gapfilled Data, Last Quarter 2013, with iMax=inf")
+Image(gf_quarterly_inf$fill[,,4,1], zlim = c(0.2, 1), colbarTitle = "NDVI") + ggtitle("Quarterly Gapfilled Data, Last Quarter 2013, with iMax=inf") # plotting quarterly gapfilled data with iMax=Inf
 ```
 
-<img src="main_files/figure-markdown_github/plot-inf-gf-1.png" width="50%" style="display: block; margin: auto 0 auto auto;" />
+<img src="main_files/figure-markdown_github/plot-inf-gf-1.png" width="50%" style="display: block; margin: auto;" />
 
 BFAST
 -----
@@ -269,11 +284,18 @@ function component named `bfastmonitor`, which is capable of carrying
 out near real-time disturbance detection in satellite image time series
 even if the data is not gap-filled (Verbesselt et al., 2013).
 
-BFASTmonitor proves to be useful because gap-filling algorithm was not
+`bfastmonitor` proves to be useful because gap-filling algorithm was not
 able to completely predict all the missing values in the time series
 data used in this study as some had some satellite images that had 100%
-cloud cover. The algorithm was used in both monthly and quarterly time
-series data.
+cloud cover, and bfast is able to handle gaps in the data. In
+`bfastmonitor`, the data is split into a history and a monitoring
+period. The “piecewise linear trend and seasonal model” (Verbesselt et.
+al, 2010) used in bfast is then fitted to the part of the history that
+is considered stable. A monitoring procesdure then checks the monitoring
+timesteps for breaks. The algorithm was used in both monthly and
+quarterly time series data.
+
+### `bfastmonitor` Example
 
 Let’s have a look at what `bfastmonitor` does by plotting two example
 time series. We select a border area of an area that is deforested
@@ -290,7 +312,7 @@ Image(gf_monthly$fill[9:13, 16:20,6:10,7], colbarTitle = "NDVI", zlim = c(0.2, 1
   ggtitle("Example Time Series Around Deforestation Edge. June - Oct 2019")
 ```
 
-<img src="main_files/figure-markdown_github/unnamed-chunk-1-1.png" width="50%" /><img src="main_files/figure-markdown_github/unnamed-chunk-1-2.png" width="50%" />
+<img src="main_files/figure-markdown_github/st-flag-4-1.png" width="50%" /><img src="main_files/figure-markdown_github/st-flag-4-2.png" width="50%" />
 In the above plot, we can observe the deforestation process in detail:
 How it progresses and first changes the NDVI gradually, then suddenly
 (indicating clearcut).
@@ -307,7 +329,9 @@ bf <- bfastmonitor(y, start = 2019) # bfmonitor
 plot(bf) # plot
 ```
 
-<img src="main_files/figure-markdown_github/unnamed-chunk-2-1.png" width="50%" /><img src="main_files/figure-markdown_github/unnamed-chunk-2-2.png" width="50%" />
+<img src="main_files/figure-markdown_github/unnamed-chunk-1-1.png" width="50%" /><img src="main_files/figure-markdown_github/unnamed-chunk-1-2.png" width="50%" />
+
+### `bfastmonitor` on Complete Tile
 
 The above demonstrated `bfastmonitor` is then run on all pixels of the
 aoi. This is done by the function `bfast_on_tile`, defined in the
@@ -538,6 +562,10 @@ Nogueira, E.M., A.M. Yanai, F.O.R. Fonseca, and P.M. Fearnside. 2015.
 Carbon stock loss from deforestation through 2013 in Brazilian Amazonia.
 Global Change Biology 21:1271–1292.
 
+Pacheco, P., Mo, K., Dudley, N., Shapiro, A., Aguilar-Amuchastegui, N.,
+Ling, P.Y., Anderson, C. and Marx, A. 2021. Deforestation fronts:
+Drivers and responses in a changing world. WWF, Gland, Switzerland.
+
 UNFCCC 2001 Seventh Conf. of Parties: The Marrakech Accords (Bonn:
 UNFCCC Secretariat) available at
 <a href="https://unfccc.int/" class="uri">https://unfccc.int/</a>
@@ -682,7 +710,7 @@ is applied
 plot(st[,,,73:84]) # complete year 2019
 ```
 
-<img src="main_files/figure-markdown_github/unnamed-chunk-10-1.png" width="50%" style="display: block; margin: auto;" />
+<img src="main_files/figure-markdown_github/unnamed-chunk-9-1.png" width="50%" style="display: block; margin: auto;" />
 
 Code for calculating `bfastmonitor` on time series with variable length
 is hidden since it is taken from the `bfast_on_tile` function seen
@@ -715,4 +743,4 @@ following order:
     ## User's Acc. TRUE  28.3105   38.81729  48.87112  61.27424 
     ## Kappa             0.2352352 0.2629319 0.4317756 0.6257878
 
-<img src="main_files/figure-markdown_github/unnamed-chunk-12-1.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-12-2.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-12-3.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-12-4.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-12-5.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-12-6.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-12-7.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-12-8.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-12-9.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-12-10.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-12-11.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-12-12.png" width="33%" />
+<img src="main_files/figure-markdown_github/unnamed-chunk-11-1.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-11-2.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-11-3.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-11-4.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-11-5.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-11-6.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-11-7.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-11-8.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-11-9.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-11-10.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-11-11.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-11-12.png" width="33%" />
