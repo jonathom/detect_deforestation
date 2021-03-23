@@ -275,10 +275,45 @@ data used in this study as some had some satellite images that had 100%
 cloud cover. The algorithm was used in both monthly and quarterly time
 series data.
 
-`bfastmonitor` is run on all pixels of the aoi. This is done by the
-function `bfast_on_tile` in the following code block. It returns a
-matrix that is `TRUE` for all pixels for which a breakpoint is detected
-and `FALSE` for all where no break is found.
+Let’s have a look at what `bfastmonitor` does by plotting two example
+time series. We select a border area of an area that is deforested
+(subset of time series in first plot). Then we let `bfastmonitor` run on
+two example pixels (top-left and bottom-right corner). As expected, a
+break is detected in the latter time series.
+
+``` r
+ext <- extent(-7337562,-7337134,-1020218,-1019648) # extent drawn on raster and then recreated here
+plot(st_geometry(prod), main = "Overview of Example Time Series") # plot prodes shape
+plot(as(st[,,,80], "Raster"), add = TRUE, ext = ext) # add clipped raster
+
+Image(gf_monthly$fill[9:13, 16:20,6:10,7], colbarTitle = "NDVI", zlim = c(0.2, 1))  +
+  ggtitle("Example Time Series Around Deforestation Edge. June - Oct 2019")
+```
+
+<img src="main_files/figure-markdown_github/unnamed-chunk-1-1.png" width="50%" /><img src="main_files/figure-markdown_github/unnamed-chunk-1-2.png" width="50%" />
+In the above plot, we can observe the deforestation process in detail:
+How it progresses and first changes the NDVI gradually, then suddenly
+(indicating clearcut).
+
+``` r
+x <- as.vector(gf_monthly$fill[9,16,,]) # ts of top-left pixel
+y <- as.ts(zoo(x, seq(2013, by = .08333333, length.out = 84))) # as ts object
+bf <- bfastmonitor(y, start = 2019) # bfmonitor
+plot(bf) # plot
+
+x <- as.vector(gf_monthly$fill[13,20,,]) # ts of bottom-right pixel
+y <- as.ts(zoo(x, seq(2013, by = .08333333, length.out = 84))) # as ts object
+bf <- bfastmonitor(y, start = 2019) # bfmonitor
+plot(bf) # plot
+```
+
+<img src="main_files/figure-markdown_github/unnamed-chunk-2-1.png" width="50%" /><img src="main_files/figure-markdown_github/unnamed-chunk-2-2.png" width="50%" />
+
+The above demonstrated `bfastmonitor` is then run on all pixels of the
+aoi. This is done by the function `bfast_on_tile`, defined in the
+following code block. It returns a matrix that is `TRUE` for all pixels
+for which a breakpoint is detected and `FALSE` for all where no break is
+found.
 
 ``` r
 bfast_on_tile <- function(gapfill_matrix, by, ts, order) {
@@ -446,6 +481,24 @@ array(c(accuracies(table1), accuracies(table2)), dim = c(6,2), dimnames = list(c
 Discussion
 ==========
 
+-   main diff observed:
+    -   more false negative, more false positive
+    -   especially Prod. Acc. TRUE and User’s Acc. FALSE are worse
+    -   quarterly aggregation underestimates deforestation
+-   also observed:
+    -   `iMax` parameter of `Gapfill` has almost no influence
+    -   same with `order` of `bfastmonitor`
+    -   whether `Gapfill` is applied or not does have an influence
+        (considered significant)
+-   expl:
+    -   as in error paper: data availability has big effect. bfast must
+        work better on more data, also: warning “too less timesteps in
+        history period”
+-   sources of error:
+    -   if for a deforestated pixel no values available, marked false
+        (only relevant in D)
+    -   aggregation to median
+
 Conclusion
 ==========
 
@@ -609,3 +662,57 @@ array(c(accuracies(table1), accuracies(table7)), dim = c(6,2), dimnames = list(c
     ## User's Acc. FALSE 96.83292       96.93052     
     ## User's Acc. TRUE  73.64539       68.28251     
     ## Kappa             0.7417141      0.7042521
+
+D) Near Real-Time Proof of Concept
+----------------------------------
+
+Previously we have tested the methods on complete time series and
+started the BFAST algorithm at the beginning of 2019. This makes sense
+as we wanted to compare the suitability of monthly vs. quarterly data
+for using bfast, mainly in an effort to reduce cloud gaps via
+aggregation + a gapfilling method. But what about evaluating each new
+acquired image separately? This approach is tested here only on the
+monthly aggregated data, since even that could hardly be called “near
+real-time”. So in order to evaluate how `bfastmonitor` performs if the
+very last pixel of the time series contains the deforestation event, the
+time series are cut short. This is done on the original data, no gapfill
+is applied
+
+``` r
+plot(st[,,,73:84]) # complete year 2019
+```
+
+<img src="main_files/figure-markdown_github/unnamed-chunk-10-1.png" width="50%" style="display: block; margin: auto;" />
+
+Code for calculating `bfastmonitor` on time series with variable length
+is hidden since it is taken from the `bfast_on_tile` function seen
+above.
+
+The idea here is to run `bfastmonitor` each time a new image comes in,
+which in this case is a monthly aggregated image (no gapfilling done).
+As we see above, most timesteps of 2019 are useless anyway. Regardless,
+bfast is run on timesteps for which DETER actually detected
+deforestation, and results are then plotted next to their reference
+data. (Code is also hidden, see `main.Rmd`). The output below is in the
+following order:
+
+1.  timesteps for which DETER detected deforestation in 2019
+2.  accuracy measures as more data is added to the time series that is
+    fed to `bfastmonitor`
+3.  Input data, `bfastmonitor` detection and DETER reference data
+    plotted by month
+
+<!-- -->
+
+    ## [1] "2019-09-03" "2019-09-09" "2019-08-08" "2019-06-06" "2019-07-10"
+    ## [6] "2019-07-22" "2019-07-25" "2019-07-30"
+
+    ##                   june      july      august    september
+    ## Overall Accuracy  93.18878  88.95408  89.09184  89.68878 
+    ## Prod. Acc. FALSE  96.6318   95.44839  93.79212  91.6612  
+    ## Prod. Acc. TRUE   25.96859  27.37968  49.71292  78.02469 
+    ## User's Acc. FALSE 96.2241   92.57152  93.98535  96.10381 
+    ## User's Acc. TRUE  28.3105   38.81729  48.87112  61.27424 
+    ## Kappa             0.2352352 0.2629319 0.4317756 0.6257878
+
+<img src="main_files/figure-markdown_github/unnamed-chunk-12-1.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-12-2.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-12-3.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-12-4.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-12-5.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-12-6.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-12-7.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-12-8.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-12-9.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-12-10.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-12-11.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-12-12.png" width="33%" />
