@@ -1,7 +1,7 @@
 ---
 title: "Deforestation Detection"
 author: "Brian Pondi, Jonathan Bahlmann"
-date: "2/12/2021"
+date: "2/22/2021"
 output: 
  md_document:
    variant: markdown_github
@@ -12,15 +12,19 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 # Near Real-Time Monitoring of Deforestation using Optical Remote Sensing Data
 
+            Brian Pondi, Jonathan Bahlmann
+                    24th March 2021
+        Institute for Geoinformatics, Münster
+
 # Introduction
 
-Forests are known to be crucial  part of the ecosystem . They purify water and air . Forests  are key in mitigating climate changes  as the act as carbon sink and apart from that there are varieties of land-based species that live in the forest. Forests in the tropical are under threat due to deforestation .Deforestation in this context refers  to (UNFCCC 2001) definition which is the direct human-induced conversion of forested land to do non-forested land.
+Forests are known to be crucial  part of the ecosystem, they purify water and air . Forests  are key in mitigating climate changes  as the act as carbon sink and apart from that there are varieties of land-based species that live in the forest. Forests in the tropical are under threat due to deforestation .Deforestation in this context refers  to (UNFCCC 2001) definition which is the direct human-induced conversion of forested land to do non-forested land.
 
 In this research we  focused on Brazil Amazonia because deforestation that occurs in that region leads to loss of environmental services that affect the whole world therefore affecting Brazil the most (Fearnside, 1997a, 2008a).  Environmental services of Amazonian forest here include its roles in storing carbon, which avoids global warming (Fearnside, 2000, 2016a; Nogueira et al., 2015), recycling of water in also non-Amazonian areas (Arraut et al., 2012), and in maintenance of biodiversity (Fearnside, 1999). Additionally, Amazonian forests provide a variety of material products, like rubber and Brazil nuts; which currently support local populations and are also lost as opportunities for sustainable use  when areas are deforested. 
 
-Carrying out near-real time monitoring of deforestation can help to curb the menace. Satellite sensors Are greatly capable for this task because they provide repeatable measurements that are consistent in both spatial scale and temporal scale. This capability enables capturing of many processes that can  cause change including natural cases like fire and anthropogenic disturbances like deforestation (Jin and Sader, 2005).
+Carrying out near-real time monitoring of deforestation can help to curb deforestation. Satellite sensors are greatly capable for this task because they provide repeatable measurements that are consistent in both spatial scale and temporal scale. This capability enables capturing of many processes that can  cause change including natural cases like fire and anthropogenic disturbances like deforestation (Jin and Sader, 2005).
 
-Our research focused on utilizing Optical Multi-spectral Remote Sensing Imagery to carry out near real time monitoring of deforestation. The main challenge of optical satellite data specifically on the tropics is that they cannot penetrate cloud cover. We therefore explored new techniques such as a gapfill algorithm to  predict missing values in  optical imagery time series data, we also explored the capability of bfastmonitor to detect near real-time disturbance in a time series optical datasets that have undergone gapfilling process.
+Our research focused on utilizing Optical Multi-spectral Remote Sensing Imagery to carry out near real time monitoring of deforestation. The main challenge of optical satellite data specifically on the tropics is that they cannot penetrate cloud cover. We therefore explored new techniques such as a gapfill algorithm to  predict missing values in  optical imagery time series data, we also explored the capability of bfastmonitor to detect near real-time disturbance in a time series optical datasets that have undergone gap-filling process.
 
 # Methods
 
@@ -36,8 +40,9 @@ Gapfill was appealing to this research because it's capable of handling large sp
 
 In this research we also explored to tailor gapfill by customizing the iMax parameter which is the maximum number of iterations until NA is  returned as predicted value (Gerber, 2016). The research  compares the iMax parameter at value 5 (five)  for  five iterations versus undefined which results to infinite iterations by default.
 
+Near-real time monitoring  of deforestation being the main object of this study ,  we looked into a  generic change detection approach for time series by detecting and characterizing Breaks For Additive Seasonal and Trend (BFAST). (Verbesselt et al., 2010) first applied BFAST in s forested area of South Eastern Australia and it was able to detect and characterize spatial and temporal changes in a forested landscape . BFAST package is now publicly available on CRAN,besides bfast there exists a function component named bfastmonitor which is capable of carrying out near-real disturbance detection  in satellite image time series even if the data is non-gap-filled (Verbesselt et al., 2013).
 
-BFAST(Breaks For Additive Season and Trend)
+BFASTmonitor proves to be useful because gap-filling algorithm was not able to completely predict all  the missing values in  the time series data used in this study as some had some satellite images that had 100%  cloud cover. The algorithm was used in both monthly and quarterly time series data.
 
 
 ## Input Data and Preparations
