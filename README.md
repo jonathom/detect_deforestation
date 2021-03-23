@@ -526,6 +526,30 @@ Discussion
 Conclusion
 ==========
 
+We evaluated gap-fill algorithm on time series satellite data since most
+remote sensing analysis methods are designed for complete data. For the
+datasets in this study, gap-fill did not fill up well the gaps on
+monthly time series as several datasets were nearly 100% empty. We
+latter did a 3 months (quarterly) aggregation based on median pixel
+value which reduced the number of satellite data that had massive gaps.
+Gap-fill algorithm proved to predict values in Landast 8 NDVI data that
+had 50% to 75% missing values. We also compared the ability to customize
+the number of loops for the algorithm , when iMax was set to infinity it
+outperformed the restricted scenario of 5 loops. Gap-fill algorithm
+proves to be an interesting algorithm for gap-filling time series data
+as long as they are not nearly in the worst state which is 100% missing
+values.
+
+We also evaluated bfastmonitor algorithm which was a technique designed
+for near-real time monitoring of time series satellite data to be aware
+of disturbances. It is known for its advantage of working well even when
+there are gaps in the time series data. For this study, bfastmonitor has
+still achieved better results in a monthly Landsat 8 satellite imagery
+time series (2013 - 2019) that had major gaps when it comes to missing
+values compared to an aggregation of of 3 months (quarterly) which
+minimized missing values especially when gap-filling approach was
+carried out.
+
 References
 ==========
 
