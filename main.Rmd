@@ -1,19 +1,17 @@
 ---
-title: "Deforestation Detection"
-author: "Brian Pondi, Jonathan Bahlmann"
-date: "2/12/2021"
+title: "Near Real-Time Monitoring of Deforestation using Optical Remote Sensing Data"
+author: "Brian Pondi, Jonathan Bahlmann - Institute for Geoinformatics, Münster"
+date: "24/03/2021"
 output: 
- md_document:
-   variant: markdown_github
+  html_document:
+    keep_md: true
+ # md_document:
+   #variant: markdown_github
+---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-# Near Real-Time Monitoring of Deforestation using Optical Remote Sensing Data
-
-            Brian Pondi, Jonathan Bahlmann
-                    24th March 2021
-        Institute for Geoinformatics, Münster
 
 # Introduction
 
