@@ -1,5 +1,6 @@
 Near Real-Time Monitoring of Deforestation using Optical Remote Sensing Data
-============================================================================
+=============
+Brian Pondi & Jonathan Bahlmann
 
 Prerequisites
 =============
@@ -7,7 +8,7 @@ Prerequisites
 Because most computations are taking some time, a lot of them have been
 precomputed and uploaded to this repository. Input imagery however is
 not available via this repository due to size. To build the markdown,
-input landsat time series must be downloaded [from
+input Landsat time series must be downloaded [from
 sciebo](https://uni-muenster.sciebo.de/s/d9BKPd1sVtFqvW4) and extracted
 into the repository folder. Alongside with the toplevel files like
 `main.Rmd`, that folder should then contain `landsat_monthly` and
@@ -269,7 +270,7 @@ Image(gf_quarterly$fill[,,4,1], zlim = c(0.2, 1), colbarTitle = "NDVI") + ggtitl
 <img src="main_files/figure-markdown_github/zoom-gapfill-input-1.png" width="50%" /><img src="main_files/figure-markdown_github/zoom-gapfill-input-2.png" width="50%" /><img src="main_files/figure-markdown_github/zoom-gapfill-input-3.png" width="50%" /><img src="main_files/figure-markdown_github/zoom-gapfill-input-4.png" width="50%" />
 
 Just to see what the Gapfill algorithm is capable of achieving, observe
-what it yields when letting `iMax` default to inifity. This allows the
+what it yields when letting `iMax` default to infity. This allows the
 function to endlessly increase the neighbourhood for predicting `NA`
 values, resulting in an image with no cloud gaps whatsoever (as long as
 some input pixels are given, gapfill can not fill empty images).
@@ -489,7 +490,7 @@ earlier, PRODES and DETER Shapefiles were used to validate the results.
 First, overview maps of the `bfastmonitor` - classifications are
 printed. `TRUE/FALSE` are in red/purple, while `NA` values are black. In
 the row below, rasterized reference data is shown: PRODES on the left,
-and both PRODES and DETER dtaa on the right.
+and both PRODES and DETER data on the right.
 
 ``` r
 # plot results
@@ -876,3 +877,16 @@ following order:
     ## Kappa             0.2352352 0.2629319 0.4317756 0.6257878
 
 <img src="main_files/figure-markdown_github/unnamed-chunk-11-1.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-11-2.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-11-3.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-11-4.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-11-5.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-11-6.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-11-7.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-11-8.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-11-9.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-11-10.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-11-11.png" width="33%" /><img src="main_files/figure-markdown_github/unnamed-chunk-11-12.png" width="33%" />
+
+E) Statement of Work
+--------------------
+
+Brian:
+
+-   Project idea and development, initial research
+-   Paper drafting
+
+Jonathan:
+
+-   Implementation
+-   Draft review and finalization

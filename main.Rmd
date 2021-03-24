@@ -11,11 +11,11 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Near Real-Time Monitoring of Deforestation using Optical Remote Sensing Data
+Please find this project with all required data [on github](https://github.com/jonathom/detect_deforestation).
 
 # Prerequisites
 
-Because most computations are taking some time, a lot of them have been precomputed and uploaded to this repository. Input imagery however is not available via this repository due to size. To build the markdown, input landsat time series must be downloaded [from sciebo](https://uni-muenster.sciebo.de/s/d9BKPd1sVtFqvW4) and extracted into the repository folder. Alongside with the toplevel files like `main.Rmd`, that folder should then contain `landsat_monthly` and `landsat_quarterly`. If there is a problem with the input data, please contact us.
+Because most computations are taking some time, a lot of them have been precomputed and uploaded to this repository. Input imagery however is not available via this repository due to size. To build the markdown, clone this repository locally and download the Landsat time series data [from sciebo](https://uni-muenster.sciebo.de/s/d9BKPd1sVtFqvW4) and extracted into the repository folder. Alongside with the toplevel files like `main.Rmd`, that folder should then contain `landsat_monthly` and `landsat_quarterly`. If there is a problem with the input data, please contact us.
 
 # Introduction
 
@@ -165,7 +165,7 @@ Image(gf_monthly$fill[,,10:12,1], zlim = c(0.2, 1), colbarTitle = "NDVI") + ggti
 Image(gf_quarterly$fill[,,4,1], zlim = c(0.2, 1), colbarTitle = "NDVI") + ggtitle("Quarterly Gapfilled Data, Last Quarter 2013, iMax = 5")
 ```
 
-Just to see what the Gapfill algorithm is capable of achieving, observe what it yields when letting `iMax` default to inifity. This allows the function to endlessly increase the neighbourhood for predicting `NA` values, resulting in an image with no cloud gaps whatsoever (as long as some input pixels are given, gapfill can not fill empty images).
+Just to see what the Gapfill algorithm is capable of achieving, observe what it yields when letting `iMax` default to infity. This allows the function to endlessly increase the neighbourhood for predicting `NA` values, resulting in an image with no cloud gaps whatsoever (as long as some input pixels are given, gapfill can not fill empty images).
 ```{r plot-inf-gf, fig.show="hold", out.width="50%", fig.align="center"}
 gf_quarterly_inf <- readRDS("./appendix/quarterly_iMaxInf_140_gapfilled.rds")
 Image(gf_quarterly_inf$fill[,,4,1], zlim = c(0.2, 1), colbarTitle = "NDVI") + ggtitle("Quarterly Gapfilled Data, Last Quarter 2013, with iMax=inf") # plotting quarterly gapfilled data with iMax=Inf
@@ -309,7 +309,7 @@ This concludes the applied methods of applying the combination of `Gapfill` and 
 
 `Gapfill` and `bfastmonitor` were applied to both monthly and quarterly aggregated Landsat time series to detect deforestation. As mentioned earlier, PRODES and DETER Shapefiles were used to validate the results. 
 
-First, overview maps of the `bfastmonitor` - classifications are printed. `TRUE/FALSE` are in red/purple, while `NA` values are black. In the row below, rasterized reference data is shown: PRODES on the left, and both PRODES and DETER dtaa on the right. 
+First, overview maps of the `bfastmonitor` - classifications are printed. `TRUE/FALSE` are in red/purple, while `NA` values are black. In the row below, rasterized reference data is shown: PRODES on the left, and both PRODES and DETER data on the right. 
 ```{r results, fig.show="hold", out.width="50%"}
 # plot results
 Image(bfast_monthly, colbarTitle = "TRUE/FALSE") + ggtitle("Monthly Data") + theme(plot.title = element_text(size=22))
@@ -549,3 +549,15 @@ array(c(
  accuracies(addmargins(table(l80, plot_ref(deter_aug, TRUE)))),
  accuracies(addmargins(table(l81, plot_ref(deter_sep, TRUE))))), dim = c(6,4), dimnames = list(c("Overall Accuracy", "Prod. Acc. FALSE", "Prod. Acc. TRUE", "User's Acc. FALSE", "User's Acc. TRUE", "Kappa"), c("june", "july", "august", "september"))) # comparison of accuracies
 ```
+
+## E) Statement of Work
+
+Brian:
+
+  * Project idea and development, initial research
+  * Paper drafting
+  
+Jonathan:
+
+  * Implementation
+  * Draft review and finalization
