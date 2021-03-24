@@ -11,7 +11,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-Please find this project with all required data [on github](https://github.com/jonathom/detect_deforestation).
+**Please find this project with all required data on github: [https://github.com/jonathom/detect_deforestation](https://github.com/jonathom/detect_deforestation).**
 
 # Prerequisites
 
@@ -19,7 +19,7 @@ Because most computations are taking some time, a lot of them have been precompu
 
 # Introduction
 
-Forests are known to be crucial part of the ecosystem as they purify water and air. They are key in mitigating climate changes as they act as a carbon sink and apart from that there are varieties of land-based species that live in the forest (Pacheco et al., 2021). Forests in the tropical are under threat due to deforestation. Deforestation in this context refers to (UNFCCC 2001) definition which is the direct human-induced conversion of forested land to do non-forested land.
+Forests are known to be crucial part of the ecosystem as they purify water and air. They are key in mitigating climate changes as they act as a carbon sink and apart from that there are varieties of land-based species that live in the forest (Pacheco et al., 2021). Forests in the tropical are under threat due to deforestation. Deforestation in this context refers to (UNFCCC 2001) definition which is the direct human-induced conversion of forested land to non-forested land.
 
 In this research we focused on the Amazonia of Brazil because deforestation that occurs in that region leads to loss of environmental services that, while affecting Brazil the most, affect the whole world (Fearnside, 1997a, 2008a). Environmental services of Amazonian forest here include its roles in storing carbon, which avoids global warming (Fearnside, 2000, 2016a; Nogueira et al., 2015), recycling of water in also non-Amazonian areas (Arraut et al., 2012), and in maintenance of biodiversity (Fearnside, 1999). 
 
@@ -51,7 +51,7 @@ raster_cube(col, v, L8.clear_mask) %>%
  write_tif("smaller_monthly",prefix = "NDVI_")
 ```
 
-The aggregated imagery time series are loaded as `stars` objects from their directories. They are plotted to get an idea of what we are dealing with here. The monthly aggreagtion can be seen on the left, the quarterly aggregation on the right.
+The aggregated imagery time series are loaded as `stars` objects from their directories. They are plotted to get an idea of what we are dealing with here. The monthly aggregation can be seen on the left, the quarterly aggregation on the right.
 ```{r load-data, message=FALSE, warning=FALSE, fig.show="hold", out.width="50%"}
 library(stars)
 library(gapfill)
@@ -358,7 +358,7 @@ In this research, we a) applied `gapfill` to cover for cloud gaps in a multi-tem
 
 As for the applied gapfilling, we found that computational load poses an issue, as we had to settle for some remaining cloud gaps due to the very intense time requirement of `Gapfill` to replace all gaps, even on such a small area of interest. However, the problem of cloud gaps was at the core of this research, which is why we also tried to eliminate gaps by aggregating much stronger, as mentioned. Nonetheless, does the `Gapfill` algorithm prove to be an interesting algorithm for gap-filling time series data.
 
-Via the `bfastmonitor` classification and PRODES and DETER reference data we could then evaluate how that aggregation influences the quality of a deforestation detection. We found that deforestation is in general underestimated, but more so in the quarterly aggregated data. BFAST itself proves to be a robust tool for such a detection, on ethe one hand because of good overall results, on the other hand due to capabilities of integration into a near real-time system (proof of concept in Appendix D). 
+Via the `bfastmonitor` classification and PRODES and DETER reference data we could then evaluate how that aggregation influences the quality of a deforestation detection. We found that deforestation is in general underestimated, but more so in the quarterly aggregated data. BFAST itself proves to be a robust tool for such a detection, on the one hand because of good overall results, on the other hand due to capabilities of integration into a near real-time system (proof of concept in Appendix D). 
 
 Sources of error that we not account for are e.g. the chosen aggregation method and the deforestation reference data, which even though it is benefiting from quite a strong methodology, is also subject to misinterpretation and errors. We saw that using only PRODES data leads to an underestimation of forest disturbance, while using DETER data introduces uncertainty about the characteristics of the disturbance event.
 
@@ -396,7 +396,7 @@ Verbesselt, J., Zeileis, A., & Herold, M. (2013). Near real-time disturbance det
 # Appendix
 
 ## A) Investigate `iMax` Parameter of `Gapfill` Function
-We investiagted different values for the `iMax` parameter in Gapfill algorithm, and found that results were not significantly different (did neither improve nor impair accuracies), although the calculation using `iMax = infinite`, i.e. completely gapfilled data, resulted in the highest accuracies. The code for this is found here.
+We investigated different values for the `iMax` parameter in Gapfill algorithm, and found that results were not significantly different (did neither improve nor impair accuracies), although the calculation using `iMax = infinite`, i.e. completely gapfilled data, resulted in the highest accuracies. The code for this is found here.
 
 Create gapfilled datasets and calculate bfast on tiles.
 ``` {r, eval=FALSE}

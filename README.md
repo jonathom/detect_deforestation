@@ -8,10 +8,10 @@ Prerequisites
 Because most computations are taking some time, a lot of them have been
 precomputed and uploaded to this repository. Input imagery however is
 not available via this repository due to size. To build the markdown,
-input Landsat time series must be downloaded [from
-sciebo](https://uni-muenster.sciebo.de/s/d9BKPd1sVtFqvW4) and extracted
-into the repository folder. Alongside with the toplevel files like
-`main.Rmd`, that folder should then contain `landsat_monthly` and
+clone this repository locally and download the Landsat time series data
+[from sciebo](https://uni-muenster.sciebo.de/s/d9BKPd1sVtFqvW4) and
+extracted into the repository folder. Alongside with the toplevel files
+like `main.Rmd`, that folder should then contain `landsat_monthly` and
 `landsat_quarterly`. If there is a problem with the input data, please
 contact us.
 
@@ -24,7 +24,7 @@ a carbon sink and apart from that there are varieties of land-based
 species that live in the forest (Pacheco et al., 2021). Forests in the
 tropical are under threat due to deforestation. Deforestation in this
 context refers to (UNFCCC 2001) definition which is the direct
-human-induced conversion of forested land to do non-forested land.
+human-induced conversion of forested land to non-forested land.
 
 In this research we focused on the Amazonia of Brazil because
 deforestation that occurs in that region leads to loss of environmental
@@ -100,7 +100,7 @@ to do a differentiated evaluation.
 
 The aggregated imagery time series are loaded as `stars` objects from
 their directories. They are plotted to get an idea of what we are
-dealing with here. The monthly aggreagtion can be seen on the left, the
+dealing with here. The monthly aggregation can be seen on the left, the
 quarterly aggregation on the right.
 
 ``` r
@@ -635,7 +635,7 @@ Via the `bfastmonitor` classification and PRODES and DETER reference
 data we could then evaluate how that aggregation influences the quality
 of a deforestation detection. We found that deforestation is in general
 underestimated, but more so in the quarterly aggregated data. BFAST
-itself proves to be a robust tool for such a detection, on ethe one hand
+itself proves to be a robust tool for such a detection, on the one hand
 because of good overall results, on the other hand due to capabilities
 of integration into a near real-time system (proof of concept in
 Appendix D).
@@ -715,7 +715,7 @@ Appendix
 A) Investigate `iMax` Parameter of `Gapfill` Function
 -----------------------------------------------------
 
-We investiagted different values for the `iMax` parameter in Gapfill
+We investigated different values for the `iMax` parameter in Gapfill
 algorithm, and found that results were not significantly different (did
 neither improve nor impair accuracies), although the calculation using
 `iMax = infinite`, i.e. completely gapfilled data, resulted in the

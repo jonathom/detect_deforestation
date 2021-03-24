@@ -378,14 +378,14 @@ summary {
 </div>
 
 
-<p>Please find this project with all required data <a href="https://github.com/jonathom/detect_deforestation">on github</a>.</p>
+<p><strong>Please find this project with all required data on github: <a href="https://github.com/jonathom/detect_deforestation">https://github.com/jonathom/detect_deforestation</a>.</strong></p>
 <div id="prerequisites" class="section level1">
 <h1>Prerequisites</h1>
 <p>Because most computations are taking some time, a lot of them have been precomputed and uploaded to this repository. Input imagery however is not available via this repository due to size. To build the markdown, clone this repository locally and download the Landsat time series data <a href="https://uni-muenster.sciebo.de/s/d9BKPd1sVtFqvW4">from sciebo</a> and extracted into the repository folder. Alongside with the toplevel files like <code>main.Rmd</code>, that folder should then contain <code>landsat_monthly</code> and <code>landsat_quarterly</code>. If there is a problem with the input data, please contact us.</p>
 </div>
 <div id="introduction" class="section level1">
 <h1>Introduction</h1>
-<p>Forests are known to be crucial part of the ecosystem as they purify water and air. They are key in mitigating climate changes as they act as a carbon sink and apart from that there are varieties of land-based species that live in the forest (Pacheco et al., 2021). Forests in the tropical are under threat due to deforestation. Deforestation in this context refers to (UNFCCC 2001) definition which is the direct human-induced conversion of forested land to do non-forested land.</p>
+<p>Forests are known to be crucial part of the ecosystem as they purify water and air. They are key in mitigating climate changes as they act as a carbon sink and apart from that there are varieties of land-based species that live in the forest (Pacheco et al., 2021). Forests in the tropical are under threat due to deforestation. Deforestation in this context refers to (UNFCCC 2001) definition which is the direct human-induced conversion of forested land to non-forested land.</p>
 <p>In this research we focused on the Amazonia of Brazil because deforestation that occurs in that region leads to loss of environmental services that, while affecting Brazil the most, affect the whole world (Fearnside, 1997a, 2008a). Environmental services of Amazonian forest here include its roles in storing carbon, which avoids global warming (Fearnside, 2000, 2016a; Nogueira et al., 2015), recycling of water in also non-Amazonian areas (Arraut et al., 2012), and in maintenance of biodiversity (Fearnside, 1999).</p>
 <p>Carrying out near real-time monitoring of deforestation can help to curb deforestation. Satellite sensors are greatly capable for this task because they provide repeatable measurements that are consistent in both spatial and temporal scale. This capability enables capturing of many processes that can cause change, including natural cases like fires and anthropogenic disturbances such as deforestation (Jin and Sader, 2005).</p>
 <p>Our research focused on utilizing Optical Multi-spectral Remote Sensing Imagery to carry out near real-time monitoring of deforestation. The main challenge of optical satellite data specifically on the tropics is that they cannot penetrate cloud cover. We therefore explored new techniques such as a the Gapfill algorithm to predict missing values in optical imagery time series data, i.e. to fill the cloud gaps. We then used <code>bfastmonitor</code> of the bfast algorithm family to detect disturbances in the gapfilled optical time series.</p>
@@ -407,7 +407,7 @@ raster_cube(col, v, L8.clear_mask) %&gt;%
  select_bands(c(&quot;B04&quot;, &quot;B05&quot;)) %&gt;%
  apply_pixel(&quot;(B05-B04)/(B05+B04)&quot;) %&gt;%
  write_tif(&quot;smaller_monthly&quot;,prefix = &quot;NDVI_&quot;)</code></pre>
-<p>The aggregated imagery time series are loaded as <code>stars</code> objects from their directories. They are plotted to get an idea of what we are dealing with here. The monthly aggreagtion can be seen on the left, the quarterly aggregation on the right.</p>
+<p>The aggregated imagery time series are loaded as <code>stars</code> objects from their directories. They are plotted to get an idea of what we are dealing with here. The monthly aggregation can be seen on the left, the quarterly aggregation on the right.</p>
 <pre class="r"><code>library(stars)
 library(gapfill)
 library(bfast)
@@ -674,7 +674,7 @@ Image(reference, colbarTitle = &quot;TRUE/FALSE&quot;) + ggtitle(&quot;PRODES an
 <h1>Conclusion</h1>
 <p>In this research, we a) applied <code>gapfill</code> to cover for cloud gaps in a multi-temporal dataset to then b) detect deforestation via <code>bfastmonitor</code>, on both monthly and quarterly aggregated data.</p>
 <p>As for the applied gapfilling, we found that computational load poses an issue, as we had to settle for some remaining cloud gaps due to the very intense time requirement of <code>Gapfill</code> to replace all gaps, even on such a small area of interest. However, the problem of cloud gaps was at the core of this research, which is why we also tried to eliminate gaps by aggregating much stronger, as mentioned. Nonetheless, does the <code>Gapfill</code> algorithm prove to be an interesting algorithm for gap-filling time series data.</p>
-<p>Via the <code>bfastmonitor</code> classification and PRODES and DETER reference data we could then evaluate how that aggregation influences the quality of a deforestation detection. We found that deforestation is in general underestimated, but more so in the quarterly aggregated data. BFAST itself proves to be a robust tool for such a detection, on ethe one hand because of good overall results, on the other hand due to capabilities of integration into a near real-time system (proof of concept in Appendix D).</p>
+<p>Via the <code>bfastmonitor</code> classification and PRODES and DETER reference data we could then evaluate how that aggregation influences the quality of a deforestation detection. We found that deforestation is in general underestimated, but more so in the quarterly aggregated data. BFAST itself proves to be a robust tool for such a detection, on the one hand because of good overall results, on the other hand due to capabilities of integration into a near real-time system (proof of concept in Appendix D).</p>
 <p>Sources of error that we not account for are e.g. the chosen aggregation method and the deforestation reference data, which even though it is benefiting from quite a strong methodology, is also subject to misinterpretation and errors. We saw that using only PRODES data leads to an underestimation of forest disturbance, while using DETER data introduces uncertainty about the characteristics of the disturbance event.</p>
 <p>In conclusion, we advise against aggregating a time series too strongly for deforestation detection with <code>bfastmonitor</code>, as to allow for a rich and stable history time series, but we do advise towards using gapfill methodology, as <code>Gapfill</code> has proven its capabilities.</p>
 </div>
@@ -698,7 +698,7 @@ Image(reference, colbarTitle = &quot;TRUE/FALSE&quot;) + ggtitle(&quot;PRODES an
 <h1>Appendix</h1>
 <div id="a-investigate-imax-parameter-of-gapfill-function" class="section level2">
 <h2>A) Investigate <code>iMax</code> Parameter of <code>Gapfill</code> Function</h2>
-<p>We investiagted different values for the <code>iMax</code> parameter in Gapfill algorithm, and found that results were not significantly different (did neither improve nor impair accuracies), although the calculation using <code>iMax = infinite</code>, i.e. completely gapfilled data, resulted in the highest accuracies. The code for this is found here.</p>
+<p>We investigated different values for the <code>iMax</code> parameter in Gapfill algorithm, and found that results were not significantly different (did neither improve nor impair accuracies), although the calculation using <code>iMax = infinite</code>, i.e. completely gapfilled data, resulted in the highest accuracies. The code for this is found here.</p>
 <p>Create gapfilled datasets and calculate bfast on tiles.</p>
 <pre class="r"><code>f &lt;- Gapfill(ma_quarter) # iMax defaults to infinite
 saveRDS(f, &quot;./appendix/quarterly_iMaxInf_140_gapfilled.rds&quot;)
