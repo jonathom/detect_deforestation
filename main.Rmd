@@ -303,6 +303,10 @@ accuracies <- function(table1) {
 
 # Results
 
+The main objective of this study was to compare  monthly versus quarterly monitoring of deforestation using bfastmonitor approach after gap-filling process has been applied. Based on the findings showcased in the image below. Monthly time series monitoring of  deforestation did way better thanquarterly  time series monitoring as showcased in the accuracy metrics section.  There were more false positive pixels on quarterly data implying a deforestation that was not occurring especially on the right side of the quarterly Data image.
+
+Both Prodes Data and Deter Data were used to validate the outputs of bfastmonitor approach. The outcome of the research was closer to Deter data compared to Prodes Data which did not fully cover the  deforestation scenario especially the scene on the center right of the outcome.
+
 ```{r results, fig.show="hold", out.width="50%"}
 # plot results
 Image(bfast_monthly, colbarTitle = "TRUE/FALSE") + ggtitle("Monthly Data") + theme(plot.title = element_text(size=22))
@@ -313,12 +317,17 @@ Image(prodes, colbarTitle = "TRUE/FALSE") + ggtitle("PRODES Data") + theme(plot.
 Image(reference, colbarTitle = "TRUE/FALSE") + ggtitle("PRODES and DETER Data") + theme(plot.title = element_text(size=22))
 ```
 
+A look into the monthly data accuracy metrics below, it had an error of omission  value of 6.09% for incorrectly classifying forested areas as deforested, it also had an error of omission vale  of 15.27 %  classifying deforested as forested. An evaluation using error of commission, forested areas had 4.91% incorrect classification and deforested areas had  33.34% incorrect classification.
+
+Evaluating the quarterly data accuracy metrics, t had an error of omission  value of 7.67% for incorrectly classifying forested areas as deforested, it also had an error of omission vale  of 23.73 %  classifying deforested as forested. An evaluation using error of commission, forested areas had 3.18% incorrect classification and deforested areas had  26.35% incorrect classification.
+
 ```{r table-results}
 addmargins(table(bfast_monthly, reference)) # monthly data error matrix
 addmargins(table(bfast_quarter, reference)) # quarterly data error matrix
 
 array(c(accuracies(table1), accuracies(table2)), dim = c(6,2), dimnames = list(c("Overall Accuracy", "Prod. Acc. FALSE", "Prod. Acc. TRUE", "User's Acc. FALSE", "User's Acc. TRUE", "Kappa"), c("monthly", "quarterly"))) # comparison of accuracies
 ```
+Comparing the overall accuracy, Producer’s accuracy False and User’s accuracy False of monthly to quarterly outcome. They don’t have a major difference, but when you look  at  Kappa Coefficient,  Producer’s accuracy True and User’s accuracy True  they show that monthly outcome did better than quarterly outcome in the margin of approximately 10%.
 
 # Discussion
 
