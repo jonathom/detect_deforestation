@@ -2,7 +2,7 @@
 title: "Near Real-Time Monitoring of Deforestation using Optical Remote Sensing Data"
 author: "Brian Pondi, Jonathan Bahlmann - Institute for Geoinformatics, Münster"
 date: "24/03/2021"
-output:
+output: 
  md_document:
   variant: markdown_github
 ---
@@ -27,6 +27,8 @@ Carrying out near real-time monitoring of deforestation can help to curb defores
 
 Our research focused on utilizing Optical Multi-spectral Remote Sensing Imagery to carry out near real-time monitoring of deforestation. The main challenge of optical satellite data specifically on the tropics is that they cannot penetrate cloud cover. We therefore explored new techniques such as a the Gapfill algorithm to predict missing values in optical imagery time series data, i.e. to fill the cloud gaps. We then used `bfastmonitor` of the bfast algorithm family to detect disturbances in the gapfilled optical time series.
 
+Of special interest was the presence of the mentioned cloud gaps, and how they affect deforestation detection, i.e. we asked the question: Does `bfastmonitor` perform better with stronger aggregated data? To answer this question, we compared the same procedure for monthly and for quarterly aggregated data sets.
+
 We validated our results by using [INPE](http://terrabrasilis.dpi.inpe.br/en/home-page/) [PRODES](http://terrabrasilis.dpi.inpe.br/download/dataset/legal-amz-prodes/vector/yearly_deforestation.zip) (more conservative, so very low false positive rate) and [DETER](http://terrabrasilis.dpi.inpe.br/file-delivery/download/deter-amz/shape) (automatized system, some false positives expected) deforestation data as reference.
 
 # Methods
@@ -37,16 +39,16 @@ The time series of Landsat 8 satellite images used for this research were alread
 
 To investigate the influence of different temporal aggregation intervals, the input data was aggregated to a) a monthly and b) a quarterly NDVI (Normalized Difference Vegetation Index) time series. For this, the median was used. This resulted in a) 12 NDVI images per year and b) 4 NDVI images per year, respectively.
 
-Aggregating the different temporal intervals as seen in the [course material](https://github.com/edzer/astd/blob/master/st.Rmd):
+Aggregating the different temporal intervals as seen in the [course material](https://github.com/edzer/astd/blob/master/st.Rmd), only that we chose another area of interest. Because `Gapfill` is very intense on computation time, we had to settle for only 140x140 pixels. We then selected an area with a diverse range of deforestation dates to be able to do a differentiated evaluation.
 ```
 v = cube_view(srs="EPSG:3857", extent=list(left = -7338335, right = -7329987, top = -1018790, bottom = -1027138, t0 ="2013-01-01", t1 = "2019-12-31"), dx=60, dy=60, dt = "P1M", resampling = "average", aggregation = "median") # dt = "P3M"
 
 
 # calculate NDVI and export as GeoTIFF files at subfolder "L8cube_subregion"
 raster_cube(col, v, L8.clear_mask) %>%
-  select_bands(c("B04", "B05")) %>%
-  apply_pixel("(B05-B04)/(B05+B04)") %>%
-  write_tif("smaller_monthly",prefix = "NDVI_")
+ select_bands(c("B04", "B05")) %>%
+ apply_pixel("(B05-B04)/(B05+B04)") %>%
+ write_tif("smaller_monthly",prefix = "NDVI_")
 ```
 
 The aggregated imagery time series are loaded as `stars` objects from their directories. They are plotted to get an idea of what we are dealing with here. The monthly aggreagtion can be seen on the left, the quarterly aggregation on the right.
@@ -183,8 +185,8 @@ ext <- extent(-7337562,-7337134,-1020218,-1019648) # extent drawn on raster and 
 plot(st_geometry(prod), main = "Overview of Example Time Series") # plot prodes shape
 plot(as(st[,,,80], "Raster"), add = TRUE, ext = ext) # add clipped raster
 
-Image(gf_monthly$fill[9:13, 16:20,6:10,7], colbarTitle = "NDVI", zlim = c(0.2, 1))  +
-  ggtitle("Example Time Series Around Deforestation Edge. June - Oct 2019")
+Image(gf_monthly$fill[9:13, 16:20,6:10,7], colbarTitle = "NDVI", zlim = c(0.2, 1)) +
+ ggtitle("Example Time Series Around Deforestation Edge. June - Oct 2019")
 ```
 In the above plot, we can observe the deforestation process in detail: How it progresses and first changes the NDVI gradually, then suddenly (indicating clearcut). We show the two resulting `bfastmonitor` time series below, the first one indicating no significantly large change, and the second one detecting a break in late 2019.
 ```{r, fig.show="hold", out.width="50%"}
@@ -208,17 +210,17 @@ bfast_on_tile <- function(gapfill_matrix, by, ts, order) {
  dims <- dim(gapfill_matrix)
  result <- matrix(rep(FALSE, dims[1]*dims[2]), ncol = dims[1]) # result is all FALSE
  for (i in 1:dims[1]) { # looping through x
-  for (j in 1:dims[2]) { # looping through y
-   raw_px_ts <- as.vector(gapfill_matrix[i,j,,]) # create pixel timeseries vector
-   px_ts_obj <- as.ts(zoo(raw_px_ts, seq(2013, by = by, length.out = ts))) # make into ts object
-   bfm_obj <- bfastmonitor(px_ts_obj, start = 2019, order = order) # bfastmonitor of pixel timeseries
-   brkpoint <- bfm_obj$breakpoint
-   if(!is.na(brkpoint)) { # if breakpoint is available..
-    result[i,j] <- TRUE # .. write TRUE to solution raster
-   } else {
-    # FALSE
-   }
+ for (j in 1:dims[2]) { # looping through y
+  raw_px_ts <- as.vector(gapfill_matrix[i,j,,]) # create pixel timeseries vector
+  px_ts_obj <- as.ts(zoo(raw_px_ts, seq(2013, by = by, length.out = ts))) # make into ts object
+  bfm_obj <- bfastmonitor(px_ts_obj, start = 2019, order = order) # bfastmonitor of pixel timeseries
+  brkpoint <- bfm_obj$breakpoint
+  if(!is.na(brkpoint)) { # if breakpoint is available..
+  result[i,j] <- TRUE # .. write TRUE to solution raster
+  } else {
+  # FALSE
   }
+ }
  }
  return(result)
 }
@@ -305,10 +307,9 @@ This concludes the applied methods of applying the combination of `Gapfill` and 
 
 # Results
 
-The main objective of this study was to compare  monthly versus quarterly monitoring of deforestation using bfastmonitor approach after gap-filling process has been applied. Based on the findings showcased in the image below. Monthly time series monitoring of  deforestation did way better thanquarterly  time series monitoring as showcased in the accuracy metrics section.  There were more false positive pixels on quarterly data implying a deforestation that was not occurring especially on the right side of the quarterly Data image.
+`Gapfill` and `bfastmonitor` were applied to both monthly and quarterly aggregated Landsat time series to detect deforestation. As mentioned earlier, PRODES and DETER Shapefiles were used to validate the results. 
 
-Both Prodes Data and Deter Data were used to validate the outputs of bfastmonitor approach. The outcome of the research was closer to Deter data compared to Prodes Data which did not fully cover the  deforestation scenario especially the scene on the center right of the outcome.
-
+First, overview maps of the `bfastmonitor` - classifications are printed. `TRUE/FALSE` are in red/purple, while `NA` values are black. In the row below, rasterized reference data is shown: PRODES on the left, and both PRODES and DETER dtaa on the right. 
 ```{r results, fig.show="hold", out.width="50%"}
 # plot results
 Image(bfast_monthly, colbarTitle = "TRUE/FALSE") + ggtitle("Monthly Data") + theme(plot.title = element_text(size=22))
@@ -318,44 +319,50 @@ Image(bfast_quarter, colbarTitle = "TRUE/FALSE") + ggtitle("Quarterly Data") + t
 Image(prodes, colbarTitle = "TRUE/FALSE") + ggtitle("PRODES Data") + theme(plot.title = element_text(size=22))
 Image(reference, colbarTitle = "TRUE/FALSE") + ggtitle("PRODES and DETER Data") + theme(plot.title = element_text(size=22))
 ```
+Comparing the monthly aggregated result to the reference data below, we observe that the general shape, count and area of deforestation pixels is reflected in the result plot. There are also some scattered pixels present that do not align with the reference data. Additionally, some areas inside the areas classified as deforestation are wrongly marked `FALSE`. 
 
-A look into the monthly data accuracy metrics below, it had an error of omission  value of 6.09% for incorrectly classifying forested areas as deforested, it also had an error of omission vale  of 15.27 %  classifying deforested as forested. An evaluation using error of commission, forested areas had 4.91% incorrect classification and deforested areas had  33.34% incorrect classification.
+When looking at the quarterly data, we find an increase of the above mentioned errors. There are more scattered pixels with no corresponding reference areas and also some more areas that were falsely classified as not deforested. 
 
-Evaluating the quarterly data accuracy metrics, t had an error of omission  value of 7.67% for incorrectly classifying forested areas as deforested, it also had an error of omission vale  of 23.73 %  classifying deforested as forested. An evaluation using error of commission, forested areas had 3.18% incorrect classification and deforested areas had  26.35% incorrect classification.
+As for the reference data, the outcome of the research was closer to DETER data compared to PRODES data which did not fully cover the deforestation scenario (e.g in the areas east and west from the center of the aoi). This is expected to some extent, as PRODES data is known to be more conservative.
 
+Additionally to the raster plots, error matrices and according accuracy measurements were produced, plotted below.
 ```{r table-results}
 addmargins(table(bfast_monthly, reference)) # monthly data error matrix
 addmargins(table(bfast_quarter, reference)) # quarterly data error matrix
 
 array(c(accuracies(table1), accuracies(table2)), dim = c(6,2), dimnames = list(c("Overall Accuracy", "Prod. Acc. FALSE", "Prod. Acc. TRUE", "User's Acc. FALSE", "User's Acc. TRUE", "Kappa"), c("monthly", "quarterly"))) # comparison of accuracies
 ```
-Comparing the overall accuracy, Producer’s accuracy False and User’s accuracy False of monthly to quarterly outcome. They don’t have a major difference, but when you look  at  Kappa Coefficient,  Producer’s accuracy True and User’s accuracy True  they show that monthly outcome did better than quarterly outcome in the margin of approximately 10%.
+When comparing the error matrices for monthly and quarterly data, we notice an increase in false positives and false negatives in the quarterly error matrix. The effect of said increase can be read from the accuracies table.
+
+For example had the monthly solution an error of omission value of 6.1% for incorrectly classifying forested areas as deforested. It also had an error of omission of 15.3% classifying deforested as forested. An evaluation using error of commission, forested areas had 3.2% incorrect classification and deforested areas had 26.4% incorrect classification.
+
+Evaluating the quarterly data accuracy metrics, an error of omission value of 7.7% for incorrectly classifying forested areas as deforested is reported. The error of omission for classifying deforested as forested was 23.7%. An evaluation using error of commission, forested areas had 4.9% incorrect classification and deforested areas had 33.4% incorrect classification.
+
+It becomes clear that both Producer's and User's accuracies for the deforestation class (`TRUE`) are worse than for forested areas, meaning that deforestation itself is underestimated. We also observe a general decline in accuracy (increase in error measurements) over both aggregations that is especially strong for the above mentioned accuracies, meaning deforestation is even more underestimated in the monthly aggregation.
+
+Finally, the results are summarized by taking a look at the Kappa value, that is .1 better for monthly data (0.74 instead of 0.64).
 
 # Discussion
 
-* main diff observed: 
-  * more false negative, more false positive
-  * especially Prod. Acc. TRUE and User's Acc. FALSE are worse
-  * quarterly aggregation underestimates deforestation
-  
-* also observed: 
-  * `iMax` parameter of `Gapfill` has almost no influence
-  * same with `order` of `bfastmonitor`
-  * whether `Gapfill` is applied or not does have an influence (considered significant)
-  
-* expl:
-  * as in error paper: data availability has big effect. bfast must work better on more data, also: warning "too less timesteps in history period"
+While we conducted this research, we found several noteworthy things about the combination of `Gapfill` and `bfastmonitor`: First, the application of `Gapfill` and the resulting decrease in cloud gaps does have a positive influence on the classification, as a .04 increase in Kappa value was observed (Appendix C). The exact extent to which gapfilling is done however does not matter as much (Appendix A). 
 
-* sources of error:
-  * if for a deforestated pixel no values available, marked false (only relevant in D)
-  * aggregation to median
+In the previously stated results we further found that while deforestation is in general underestimated, the effect increases when using quarterly aggregated time series data. On the one hand, this confirms the claim that BFAST is independent from data gaps (less cloud gaps through stronger aggregation). On the other hand it raises the question why quarterly data performs worse to such an extent.
+
+The issue of data availability might play a role here, as found by Schultz et. al 2016, where data availability was identified as a key source of error in bfast deforestation detection. Considering that BFAST fits a model on the part of a time series history that is considered stable, it could be that that part becomes smaller and less stable with decreasing number of observations, thus introducing error. This is backed by the warning `"too few observations in history period"` that was occasionally given by `bfastmonitor` on the quarterly aggregated data.
+
+Not taken into account here are e.g. the influence of the aggregation method (median). 
 
 # Conclusion
 
-We evaluated gap-fill algorithm on time series satellite data since most remote sensing analysis methods are designed for complete data. For the datasets in this study, gap-fill did not fill up well the gaps on monthly time series as several datasets were nearly 100% empty. We latter did a 3 months (quarterly) aggregation based on median pixel value which reduced the number of satellite data that had massive gaps. Gap-fill  algorithm proved to predict values in Landast 8 NDVI data that had 50% to 75% missing values. We also compared the ability to customize the number of loops for the algorithm , when iMax was set to infinity it outperformed the restricted scenario of 5 loops. Gap-fill algorithm proves to be an interesting algorithm for gap-filling time series data as long as they are not nearly in the worst state which is 100% missing values.
+In this research, we a) applied `gapfill` to cover for cloud gaps in a multi-temporal dataset to then b) detect deforestation via `bfastmonitor`, on both monthly and quarterly aggregated data.
 
-We also evaluated bfastmonitor algorithm  which was a technique designed for near-real time monitoring of time series satellite data to be aware of disturbances. It is known for its advantage of working well even when there are gaps in the time series data. For this study, bfastmonitor has still achieved better results in a monthly Landsat 8 satellite imagery time series (2013 - 2019) that had major gaps  when it comes to missing values compared to an aggregation of of 3 months (quarterly) which minimized missing values especially when gap-filling approach was carried out.
+As for the applied gapfilling, we found that computational load poses an issue, as we had to settle for some remaining cloud gaps due to the very intense time requirement of `Gapfill` to replace all gaps, even on such a small area of interest. However, the problem of cloud gaps was at the core of this research, which is why we also tried to eliminate gaps by aggregating much stronger, as mentioned. Nonetheless, does the `Gapfill` algorithm prove to be an interesting algorithm for gap-filling time series data.
 
+Via the `bfastmonitor` classification and PRODES and DETER reference data we could then evaluate how that aggregation influences the quality of a deforestation detection. We found that deforestation is in general underestimated, but more so in the quarterly aggregated data. BFAST itself proves to be a robust tool for such a detection, on ethe one hand because of good overall results, on the other hand due to capabilities of integration into a near real-time system (proof of concept in Appendix D). 
+
+Sources of error that we not account for are e.g. the chosen aggregation method and the deforestation reference data, which even though it is benefiting from quite a strong methodology, is also subject to misinterpretation and errors. We saw that using only PRODES data leads to an underestimation of forest disturbance, while using DETER data introduces uncertainty about the characteristics of the disturbance event.
+
+In conclusion, we advise against aggregating a time series too strongly for deforestation detection with `bfastmonitor`, as to allow for a rich and stable history time series, but we do advise towards using gapfill methodology, as `Gapfill` has proven its capabilities.
 
 # References
 
@@ -365,7 +372,7 @@ Fearnside, P.M. 1997a. Environmental services as a strategy for sustainable deve
 
 Fearnside, P.M. 1999. Biodiversity as an environmental service in Brazil's Amazonianforests: Risks, value and conservation. Environmental Conservation 26(4):305-21.
 
-Fearnside, P.M. 2000. Global warming and tropical land-use change: Greenhouse gas emissions from biomass burning, decomposition and soils in forest  conversion, shifting cultivation and secondary vegetation. Climatic Change  46(1-2):115-158
+Fearnside, P.M. 2000. Global warming and tropical land-use change: Greenhouse gas emissions from biomass burning, decomposition and soils in forest conversion, shifting cultivation and secondary vegetation. Climatic Change 46(1-2):115-158
 
 Fearnside, P.M. 2008a. Amazon forest maintenance as a source of environmental services. Anais da Academia Brasileira de Ciências 80(1):101-114.
 
@@ -377,6 +384,8 @@ Nogueira, E.M., A.M. Yanai, F.O.R. Fonseca, and P.M. Fearnside. 2015. Carbon sto
 Biology 21:1271–1292.
 
 Pacheco, P., Mo, K., Dudley, N., Shapiro, A., Aguilar-Amuchastegui, N., Ling, P.Y., Anderson, C. and Marx, A. 2021. Deforestation fronts: Drivers and responses in a changing world. WWF, Gland, Switzerland. 
+
+Schultz, M., Verbesselt, J., Avitabile, V., Souza, C. and Herold, M., "Error Sources in Deforestation Detection Using BFAST Monitor on Landsat Time Series Across Three Tropical Sites," in IEEE Journal of Selected Topics in Applied Earth Observations and Remote Sensing, vol. 9, no. 8, pp. 3667-3679, Aug. 2016, doi: 10.1109/JSTARS.2015.2477473.
 
 UNFCCC 2001 Seventh Conf. of Parties: The Marrakech Accords (Bonn: UNFCCC Secretariat) available at https://unfccc.int/
 
@@ -469,17 +478,17 @@ Code for calculating `bfastmonitor` on time series with variable length is hidde
 l <- 77
 result <- matrix(rep(FALSE, 140*140), ncol = 140) # result is all FALSE
 for (i in 1:140) { # looping through x
-  for (j in 1:140) { # looping through y
-  raw_px_ts <- as.vector(st[,i,j,][[1]]) # create pixel timeseries vector
-  px_ts_obj <- as.ts(zoo(raw_px_ts, seq(2013, by = .08333333, length.out = l))) # make into ts object
-  bfm_obj <- bfastmonitor(px_ts_obj, start = 2019, order = 2) # bfastmonitor of pixel timeseries
-  brkpoint <- bfm_obj$breakpoint
-  if(!is.na(brkpoint)) { # if breakpoint is available..
-    result[i,j] <- TRUE # .. write TRUE to solution raster
-  } else {
-    # FALSE
-  }
-  }
+ for (j in 1:140) { # looping through y
+ raw_px_ts <- as.vector(st[,i,j,][[1]]) # create pixel timeseries vector
+ px_ts_obj <- as.ts(zoo(raw_px_ts, seq(2013, by = .08333333, length.out = l))) # make into ts object
+ bfm_obj <- bfastmonitor(px_ts_obj, start = 2019, order = 2) # bfastmonitor of pixel timeseries
+ brkpoint <- bfm_obj$breakpoint
+ if(!is.na(brkpoint)) { # if breakpoint is available..
+  result[i,j] <- TRUE # .. write TRUE to solution raster
+ } else {
+  # FALSE
+ }
+ }
 }
 saveRDS(result, "./l77.rds")
 ```
@@ -506,15 +515,15 @@ deter_aug <- deter_[deter_$VIEW_DATE < as.Date("2019-09-01"),]
 deter_sep <- deter_[deter_$VIEW_DATE < as.Date("2019-10-01"),]
 
 plot_ref <- function(deter__, give_matrix = FALSE) { # function to do the rasterization
-  res <- rasterize(deter__, as(st[,,,5], "Raster"), "VIEW_DATE")
-  deter_ras <- aperm(matrix(res[], ncol = 140), c(2,1))
-  deter_ras[!is.na(deter_ras)] <- 1
-  deter_ras[is.na(deter_ras)] <- 0
-  if(give_matrix) {
-    return(deter_ras)
-  } else {
-    Image(deter_ras) + ggtitle("DETER Reference")
-  }
+ res <- rasterize(deter__, as(st[,,,5], "Raster"), "VIEW_DATE")
+ deter_ras <- aperm(matrix(res[], ncol = 140), c(2,1))
+ deter_ras[!is.na(deter_ras)] <- 1
+ deter_ras[is.na(deter_ras)] <- 0
+ if(give_matrix) {
+  return(deter_ras)
+ } else {
+  Image(deter_ras) + ggtitle("DETER Reference")
+ }
 }
 
 plot(st[,,,78], breaks = "pretty", main = "Input June")
@@ -535,8 +544,8 @@ plot_ref(deter_sep)
 
 # do error matrices
 array(c(
-  accuracies(addmargins(table(l78, plot_ref(deter_jun, TRUE)))),
-  accuracies(addmargins(table(l79, plot_ref(deter_jul, TRUE)))),
-  accuracies(addmargins(table(l80, plot_ref(deter_aug, TRUE)))),
-  accuracies(addmargins(table(l81, plot_ref(deter_sep, TRUE))))), dim = c(6,4), dimnames = list(c("Overall Accuracy", "Prod. Acc. FALSE", "Prod. Acc. TRUE", "User's Acc. FALSE", "User's Acc. TRUE", "Kappa"), c("june", "july", "august", "september"))) # comparison of accuracies
+ accuracies(addmargins(table(l78, plot_ref(deter_jun, TRUE)))),
+ accuracies(addmargins(table(l79, plot_ref(deter_jul, TRUE)))),
+ accuracies(addmargins(table(l80, plot_ref(deter_aug, TRUE)))),
+ accuracies(addmargins(table(l81, plot_ref(deter_sep, TRUE))))), dim = c(6,4), dimnames = list(c("Overall Accuracy", "Prod. Acc. FALSE", "Prod. Acc. TRUE", "User's Acc. FALSE", "User's Acc. TRUE", "Kappa"), c("june", "july", "august", "september"))) # comparison of accuracies
 ```
